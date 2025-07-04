@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador 3D - Terremoto en Tokio</title>
+    <link href="style.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <div id="game-container">
+        <div id="ui-overlay">
+            <div id="timer">Terremoto en: <span id="countdown">30</span>s</div>
+            <div id="health">Salud: <span id="health-value">100</span>%</div>
+            <div id="instructions" class="desktop-only">
+                WASD para moverse | Mouse para mirar | SPACE para correr
+            </div>
+            <div id="mobile-instructions" class="mobile-only">
+                Joystick para moverse | Desliza para mirar | Botón para correr
+            </div>
+            <div id="status" class="hidden"></div>
+        </div>
+        <div id="loading">Cargando Tokio...</div>
+        
+        <!-- Mobile Controls -->
+        <div id="mobile-controls" class="mobile-only">
+            <div id="joystick-container">
+                <div id="joystick-base">
+                    <div id="joystick-stick"></div>
+                </div>
+            </div>
+            <div id="run-button">🏃</div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>
