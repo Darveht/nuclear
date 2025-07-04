@@ -1320,22 +1320,47 @@ class TokyoDisasterSimulator {
     }
     
     setupAudio() {
-        // Crear contexto de audio
-        if (typeof(AudioContext) !== "undefined") {
-            this.audioContext = new AudioContext();
-        } else {
-            this.audioContext = new webkitAudioContext();
-        }
+        // Crear contexto de audio con activación por interacción del usuario
+        this.audioInitialized = false;
+        this.initializeAudioOnUserInteraction();
         
         // Variables para música de fondo
         this.backgroundMusic = null;
         this.musicGain = null;
+        this.isPlayingDisasterMusic = false;
         
         // Configurar síntesis de voz
         this.setupVoiceSynthesis();
+    }
+    
+    initializeAudioOnUserInteraction() {
+        const initAudio = () => {
+            if (!this.audioInitialized) {
+                try {
+                    if (typeof(AudioContext) !== "undefined") {
+                        this.audioContext = new AudioContext();
+                    } else {
+                        this.audioContext = new webkitAudioContext();
+                    }
+                    
+                    // Reanudar contexto si está suspendido
+                    if (this.audioContext.state === 'suspended') {
+                        this.audioContext.resume();
+                    }
+                    
+                    this.audioInitialized = true;
+                    this.createAmbientSound();
+                    console.log('Audio inicializado correctamente');
+                } catch (error) {
+                    console.error('Error al inicializar audio:', error);
+                }
+            }
+        };
         
-        // Sonidos simulados con oscilladores
-        this.createAmbientSound();
+        // Inicializar audio en la primera interacción
+        document.addEventListener('click', initAudio, { once: true });
+        document.addEventListener('touchstart', initAudio, { once: true });
+        document.addEventListener('keydown', initAudio, { once: true });
     }
     
     setupVoiceSynthesis() {
@@ -1400,70 +1425,215 @@ class TokyoDisasterSimulator {
     }
     
     playDisasterMusic() {
-        // Crear música dramática de fondo para desastres
-        this.musicGain = this.audioContext.createGain();
-        this.musicGain.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-        this.musicGain.connect(this.audioContext.destination);
+        if (!this.audioContext || this.isPlayingDisasterMusic) return;
         
-        // Crear múltiples osciladores para música más compleja
-        const frequencies = [220, 440, 330, 165]; // Notas dramáticas
-        this.musicOscillators = [];
-        
-        frequencies.forEach((freq, index) => {
-            const osc = this.audioContext.createOscillator();
-            const gain = this.audioContext.createGain();
+        try {
+            this.isPlayingDisasterMusic = true;
             
-            osc.frequency.setValueAtTime(freq, this.audioContext.currentTime);
-            osc.type = index % 2 === 0 ? 'sawtooth' : 'sine';
+            // Crear ganancia principal para toda la música
+            this.musicGain = this.audioContext.createGain();
+            this.musicGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+            this.musicGain.gain.exponentialRampToValueAtTime(0.4, this.audioContext.currentTime + 1);
+            this.musicGain.connect(this.audioContext.destination);
             
-            gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.2, this.audioContext.currentTime + 2);
+            // Crear múltiples capas de sonido para música épica
+            this.musicOscillators = [];
             
-            osc.connect(gain);
-            gain.connect(this.musicGain);
-            osc.start();
+            // Capa 1: Bajos profundos (fundación)
+            this.createMusicLayer([55, 82, 110], 'sawtooth', 0.3, this.audioContext.currentTime);
             
-            this.musicOscillators.push(osc);
+            // Capa 2: Melodía principal (dramática)
+            this.createMusicLayer([220, 330, 440, 659], 'square', 0.2, this.audioContext.currentTime + 0.5);
             
-            // Variaciones en las frecuencias para crear tensión
-            setTimeout(() => {
-                if (osc) {
-                    osc.frequency.exponentialRampToValueAtTime(freq * 1.2, this.audioContext.currentTime + 1);
-                    osc.frequency.exponentialRampToValueAtTime(freq * 0.8, this.audioContext.currentTime + 3);
-                }
-            }, index * 500);
-        });
-        
-        // Añadir percusión dramática
-        this.createDramaticDrums();
+            // Capa 3: Armonías (tensión)
+            this.createMusicLayer([164, 246, 329, 494], 'triangle', 0.15, this.audioContext.currentTime + 1);
+            
+            // Capa 4: Efectos de tensión
+            this.createTensionEffects();
+            
+            // Añadir percusión épica
+            this.createEpicDrums();
+            
+            // Crear progresión melódica
+            this.createMelodyProgression();
+            
+        } catch (error) {
+            console.error('Error al reproducir música de desastre:', error);
+        }
     }
     
-    createDramaticDrums() {
-        const playDrum = () => {
+    createMusicLayer(frequencies, waveType, volume, startTime) {
+        frequencies.forEach((freq, index) => {
             const osc = this.audioContext.createOscillator();
             const gain = this.audioContext.createGain();
             const filter = this.audioContext.createBiquadFilter();
             
-            osc.frequency.setValueAtTime(60, this.audioContext.currentTime);
-            osc.frequency.exponentialRampToValueAtTime(20, this.audioContext.currentTime + 0.1);
-            osc.type = 'sawtooth';
+            // Configurar oscilador
+            osc.frequency.setValueAtTime(freq, startTime);
+            osc.type = waveType;
+            
+            // Configurar filtro para suavizar el sonido
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(800 + freq, startTime);
+            filter.Q.setValueAtTime(1, startTime);
+            
+            // Configurar ganancia con fade-in
+            gain.gain.setValueAtTime(0, startTime);
+            gain.gain.exponentialRampToValueAtTime(volume, startTime + 0.5);
+            
+            // Conectar cadena de audio
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.musicGain);
+            
+            // Iniciar oscilador
+            osc.start(startTime);
+            
+            this.musicOscillators.push(osc);
+            
+            // Crear variaciones melódicas dinámicas
+            this.createFrequencyVariations(osc, freq, startTime);
+        });
+    }
+    
+    createFrequencyVariations(oscillator, baseFreq, startTime) {
+        // Crear progresión melódica automática
+        const variations = [1, 1.2, 0.9, 1.5, 0.8, 1.3];
+        
+        variations.forEach((multiplier, index) => {
+            const changeTime = startTime + (index + 1) * 3;
+            try {
+                oscillator.frequency.exponentialRampToValueAtTime(
+                    baseFreq * multiplier, 
+                    changeTime
+                );
+            } catch (e) {
+                // Ignorar errores si el oscilador ya terminó
+            }
+        });
+    }
+    
+    createTensionEffects() {
+        // Efecto de tensión creciente con ruido filtrado
+        const noise = this.audioContext.createScriptProcessor(4096, 1, 1);
+        const noiseGain = this.audioContext.createGain();
+        const noiseFilter = this.audioContext.createBiquadFilter();
+        
+        noise.onaudioprocess = (e) => {
+            const output = e.outputBuffer.getChannelData(0);
+            for (let i = 0; i < output.length; i++) {
+                output[i] = Math.random() * 2 - 1;
+            }
+        };
+        
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(200, this.audioContext.currentTime);
+        noiseFilter.Q.setValueAtTime(10, this.audioContext.currentTime);
+        
+        noiseGain.gain.setValueAtTime(0.05, this.audioContext.currentTime);
+        
+        noise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.musicGain);
+        
+        this.musicOscillators.push(noise); // Para poder pararlo después
+    }
+    
+    createMelodyProgression() {
+        // Crear una melodía épica que se desarrolla durante el desastre
+        const melodyFreqs = [523, 587, 659, 698, 784, 880, 988, 1047]; // Do mayor
+        let currentNote = 0;
+        
+        const playMelodyNote = () => {
+            if (!this.isPlayingDisasterMusic) return;
+            
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+            
+            osc.frequency.setValueAtTime(melodyFreqs[currentNote], this.audioContext.currentTime);
+            osc.type = 'sine';
             
             filter.type = 'lowpass';
-            filter.frequency.setValueAtTime(200, this.audioContext.currentTime);
+            filter.frequency.setValueAtTime(2000, this.audioContext.currentTime);
             
-            gain.gain.setValueAtTime(0.4, this.audioContext.currentTime);
-            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.2, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1);
             
             osc.connect(filter);
             filter.connect(gain);
             gain.connect(this.musicGain);
             
             osc.start();
-            osc.stop(this.audioContext.currentTime + 0.2);
+            osc.stop(this.audioContext.currentTime + 1);
+            
+            currentNote = (currentNote + 1) % melodyFreqs.length;
+            
+            // Programar siguiente nota
+            setTimeout(playMelodyNote, 1200);
         };
         
-        // Ritmo de tambores cada 0.8 segundos
-        this.drumInterval = setInterval(playDrum, 800);
+        // Iniciar melodía después de 2 segundos
+        setTimeout(playMelodyNote, 2000);
+    }
+    
+    createEpicDrums() {
+        const createDrumSound = (frequency, duration, volume, filterFreq) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+            
+            osc.frequency.setValueAtTime(frequency, this.audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(frequency * 0.3, this.audioContext.currentTime + duration);
+            osc.type = 'sawtooth';
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(filterFreq, this.audioContext.currentTime);
+            
+            gain.gain.setValueAtTime(volume, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + duration);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.musicGain);
+            
+            osc.start();
+            osc.stop(this.audioContext.currentTime + duration);
+        };
+        
+        const playDrumPattern = () => {
+            if (!this.isPlayingDisasterMusic) return;
+            
+            // Bombo profundo
+            createDrumSound(60, 0.3, 0.6, 150);
+            
+            // Caja después de 400ms
+            setTimeout(() => {
+                if (this.isPlayingDisasterMusic) {
+                    createDrumSound(200, 0.15, 0.4, 800);
+                }
+            }, 400);
+            
+            // Hi-hat después de 600ms
+            setTimeout(() => {
+                if (this.isPlayingDisasterMusic) {
+                    createDrumSound(8000, 0.05, 0.2, 12000);
+                }
+            }, 600);
+            
+            // Segundo bombo después de 800ms
+            setTimeout(() => {
+                if (this.isPlayingDisasterMusic) {
+                    createDrumSound(80, 0.25, 0.5, 180);
+                }
+            }, 800);
+        };
+        
+        // Iniciar patrón de batería inmediatamente
+        playDrumPattern();
+        
+        // Repetir cada 1.2 segundos para crear ritmo épico
+        this.drumInterval = setInterval(playDrumPattern, 1200);
     }
     
     playNuclearSiren() {
@@ -1619,10 +1789,16 @@ class TokyoDisasterSimulator {
     }
     
     stopBackgroundMusic() {
+        this.isPlayingDisasterMusic = false;
+        
         if (this.musicOscillators) {
             this.musicOscillators.forEach(osc => {
                 try {
-                    osc.stop();
+                    if (osc.stop) {
+                        osc.stop();
+                    } else if (osc.disconnect) {
+                        osc.disconnect(); // Para ScriptProcessor
+                    }
                 } catch (e) {
                     // Ignorar errores si ya está parado
                 }
@@ -1635,8 +1811,18 @@ class TokyoDisasterSimulator {
             this.drumInterval = null;
         }
         
-        if (this.musicGain) {
-            this.musicGain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1);
+        if (this.musicGain && this.audioContext) {
+            try {
+                this.musicGain.gain.exponentialRampToValueAtTime(0.001, this.audioContext.currentTime + 1);
+                setTimeout(() => {
+                    if (this.musicGain) {
+                        this.musicGain.disconnect();
+                        this.musicGain = null;
+                    }
+                }, 1100);
+            } catch (e) {
+                console.error('Error al parar música:', e);
+            }
         }
     }
     

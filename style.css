@@ -6,10 +6,11 @@
 }
 
 body {
-    background: #000;
-    font-family: 'Arial', sans-serif;
+    background: linear-gradient(135deg, #0a0a0a, #1a1a1a);
+    font-family: 'Segoe UI', 'Roboto', 'Arial', sans-serif;
     overflow: hidden;
     cursor: none;
+    transition: all 0.5s ease;
 }
 
 #game-container {
@@ -71,14 +72,16 @@ body {
     z-index: 1500;
     color: white;
     font-size: 18px;
-    text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
-    background: rgba(0, 0, 0, 0.1);
-    padding: 15px;
-    border-radius: 10px;
-    backdrop-filter: blur(15px);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    transition: all 0.4s ease;
+    text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+    background: rgba(10, 10, 20, 0.3);
+    padding: 20px;
+    border-radius: 16px;
+    backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     transform: translateX(0);
+    max-width: 350px;
 }
 
 #ui-overlay.ui-hidden {
@@ -88,20 +91,27 @@ body {
 }
 
 #timer {
-    background: rgba(255, 0, 0, 0.8);
-    padding: 10px 15px;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    font-weight: bold;
+    background: linear-gradient(135deg, rgba(255, 60, 60, 0.9), rgba(200, 0, 0, 0.9));
+    padding: 12px 18px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-weight: 600;
     animation: pulse 1s infinite;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(255, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
 }
 
 #health {
-    background: rgba(0, 255, 0, 0.8);
-    padding: 10px 15px;
-    border-radius: 5px;
-    margin-bottom: 10px;
-    font-weight: bold;
+    background: linear-gradient(135deg, rgba(60, 255, 60, 0.9), rgba(0, 200, 0, 0.9));
+    padding: 12px 18px;
+    border-radius: 12px;
+    margin-bottom: 12px;
+    font-weight: 600;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 255, 0, 0.3);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
 }
 
 #health.low {
@@ -179,24 +189,31 @@ body {
     width: 120px;
     height: 120px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.3);
-    border: 3px solid rgba(255, 255, 255, 0.6);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(200, 200, 255, 0.1));
+    border: 2px solid rgba(255, 255, 255, 0.4);
     position: relative;
-    backdrop-filter: blur(10px);
+    backdrop-filter: blur(15px) saturate(180%);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.3);
+    transition: all 0.2s ease;
+}
+
+#joystick-base:active {
+    transform: scale(0.95);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.3);
 }
 
 #joystick-stick {
     width: 50px;
     height: 50px;
     border-radius: 50%;
-    background: rgba(255, 255, 255, 0.8);
-    border: 2px solid rgba(0, 0, 0, 0.3);
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.9), rgba(240, 240, 255, 0.8));
+    border: 2px solid rgba(255, 255, 255, 0.6);
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    transition: all 0.1s ease;
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: all 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.8);
 }
 
 #run-button {
@@ -317,4 +334,72 @@ body {
     50% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
     75% { transform: translate(-50%, -50%) scale(1) rotate(-0.5deg); }
     100% { transform: translate(-50%, -50%) scale(1) rotate(0deg); }
+}
+
+/* Efectos modernos adicionales */
+@keyframes glow {
+    0%, 100% { box-shadow: 0 0 20px rgba(255, 255, 255, 0.3); }
+    50% { box-shadow: 0 0 40px rgba(255, 255, 255, 0.6); }
+}
+
+@keyframes float {
+    0%, 100% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+}
+
+.modern-glow {
+    animation: glow 2s ease-in-out infinite;
+}
+
+.floating {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Partículas de fondo */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: radial-gradient(circle at 20% 50%, rgba(120, 119, 198, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.05) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(120, 255, 198, 0.05) 0%, transparent 50%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* Mejorar efectos de daño */
+.damage-flash {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: radial-gradient(circle, rgba(255, 0, 0, 0.4) 0%, rgba(255, 0, 0, 0.1) 50%, transparent 100%);
+    pointer-events: none;
+    z-index: 9998;
+    animation: damageFlash 0.3s ease-out;
+}
+
+@keyframes damageFlash {
+    0% { opacity: 0; }
+    50% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* Efectos de texto moderno */
+.epic-text {
+    background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #96ceb4);
+    background-size: 400% 400%;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    animation: gradientShift 3s ease infinite;
+}
+
+@keyframes gradientShift {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
 }
