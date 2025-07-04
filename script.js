@@ -482,44 +482,44 @@ class TokyoDisasterSimulator {
     createModernMansion() {
         const mansionGroup = new THREE.Group();
         
-        // Edificio principal (dos pisos)
-        const mainBuildingGeometry = new THREE.BoxGeometry(80, 25, 40);
+        // Edificio principal (tres pisos) - MÁS GRANDE
+        const mainBuildingGeometry = new THREE.BoxGeometry(120, 35, 60);
         const mainBuildingMaterial = new THREE.MeshLambertMaterial({ color: 0xF5F5DC }); // Beige claro
         const mainBuilding = new THREE.Mesh(mainBuildingGeometry, mainBuildingMaterial);
-        mainBuilding.position.set(0, 12.5, 0);
+        mainBuilding.position.set(0, 17.5, 0);
         mainBuilding.castShadow = true;
         mainBuilding.receiveShadow = true;
         
-        // Ala izquierda (un piso)
-        const leftWingGeometry = new THREE.BoxGeometry(30, 15, 25);
+        // Ala izquierda (dos pisos) - MÁS GRANDE
+        const leftWingGeometry = new THREE.BoxGeometry(45, 25, 40);
         const leftWingMaterial = new THREE.MeshLambertMaterial({ color: 0xF0F0F0 }); // Gris claro
         const leftWing = new THREE.Mesh(leftWingGeometry, leftWingMaterial);
-        leftWing.position.set(-55, 7.5, -10);
+        leftWing.position.set(-82, 12.5, -15);
         leftWing.castShadow = true;
         leftWing.receiveShadow = true;
         
-        // Ala derecha (un piso)
-        const rightWingGeometry = new THREE.BoxGeometry(25, 12, 30);
+        // Ala derecha (dos pisos) - MÁS GRANDE
+        const rightWingGeometry = new THREE.BoxGeometry(40, 22, 45);
         const rightWingMaterial = new THREE.MeshLambertMaterial({ color: 0xF0F0F0 });
         const rightWing = new THREE.Mesh(rightWingGeometry, rightWingMaterial);
-        rightWing.position.set(50, 6, 5);
+        rightWing.position.set(80, 11, 8);
         rightWing.castShadow = true;
         rightWing.receiveShadow = true;
         
-        // Techo principal (plano moderno)
-        const mainRoofGeometry = new THREE.BoxGeometry(82, 2, 42);
+        // Techo principal (plano moderno) - ajustado al nuevo tamaño
+        const mainRoofGeometry = new THREE.BoxGeometry(122, 2, 62);
         const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
         const mainRoof = new THREE.Mesh(mainRoofGeometry, roofMaterial);
-        mainRoof.position.set(0, 26, 0);
+        mainRoof.position.set(0, 36, 0);
         
-        // Techos de las alas
-        const leftRoofGeometry = new THREE.BoxGeometry(32, 2, 27);
+        // Techos de las alas (ajustados al nuevo tamaño)
+        const leftRoofGeometry = new THREE.BoxGeometry(47, 2, 42);
         const leftRoof = new THREE.Mesh(leftRoofGeometry, roofMaterial);
-        leftRoof.position.set(-55, 16, -10);
+        leftRoof.position.set(-82, 26, -15);
         
-        const rightRoofGeometry = new THREE.BoxGeometry(27, 2, 32);
+        const rightRoofGeometry = new THREE.BoxGeometry(42, 2, 47);
         const rightRoof = new THREE.Mesh(rightRoofGeometry, roofMaterial);
-        rightRoof.position.set(50, 13, 5);
+        rightRoof.position.set(80, 23, 8);
         
         // Ventanas grandes (estilo moderno)
         this.createMansionWindows(mansionGroup);
@@ -546,6 +546,9 @@ class TokyoDisasterSimulator {
         mansionGroup.add(leftRoof);
         mansionGroup.add(rightRoof);
         
+        // Crear interior de la mansión
+        this.createMansionInterior(mansionGroup);
+        
         // Posicionar la mansión en el desierto
         mansionGroup.position.set(200, 0, -200);
         
@@ -553,7 +556,9 @@ class TokyoDisasterSimulator {
             originalPosition: mansionGroup.position.clone(),
             originalRotation: mansionGroup.rotation.clone(),
             isDestroyed: false,
-            boundingBox: new THREE.Box3().setFromObject(mansionGroup)
+            boundingBox: new THREE.Box3().setFromObject(mansionGroup),
+            isMansion: true,
+            allowEntry: true // Permitir entrada a la mansión
         };
         
         this.buildings.push(mansionGroup);
@@ -730,6 +735,106 @@ class TokyoDisasterSimulator {
             
             mansionGroup.add(grass);
         });
+    }
+    
+    createMansionInterior(mansionGroup) {
+        // Habitaciones interiores
+        const rooms = [
+            // Sala principal
+            { x: 0, y: 5, z: 0, w: 100, h: 8, d: 50, color: 0xF5DEB3 },
+            // Cocina
+            { x: -30, y: 5, z: -20, w: 30, h: 8, d: 20, color: 0xFFFFFF },
+            // Dormitorio principal
+            { x: 30, y: 15, z: 0, w: 40, h: 8, d: 30, color: 0xE6E6FA },
+            // Baño
+            { x: 30, y: 5, z: -25, w: 20, h: 8, d: 15, color: 0x87CEEB },
+            // Estudio
+            { x: -40, y: 15, z: 10, w: 25, h: 8, d: 25, color: 0xDEB887 }
+        ];
+        
+        rooms.forEach(room => {
+            // Suelo de la habitación
+            const floorGeometry = new THREE.PlaneGeometry(room.w, room.d);
+            const floorMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const floor = new THREE.Mesh(floorGeometry, floorMaterial);
+            floor.rotation.x = -Math.PI / 2;
+            floor.position.set(room.x, room.y, room.z);
+            mansionGroup.add(floor);
+            
+            // Techo de la habitación
+            const ceilingGeometry = new THREE.PlaneGeometry(room.w, room.d);
+            const ceilingMaterial = new THREE.MeshLambertMaterial({ color: 0xFFFFFF });
+            const ceiling = new THREE.Mesh(ceilingGeometry, ceilingMaterial);
+            ceiling.rotation.x = Math.PI / 2;
+            ceiling.position.set(room.x, room.y + room.h, room.z);
+            mansionGroup.add(ceiling);
+        });
+        
+        // Muebles
+        this.createMansionFurniture(mansionGroup);
+        
+        // Escaleras interiores
+        this.createMansionStairs(mansionGroup);
+    }
+    
+    createMansionFurniture(mansionGroup) {
+        // Sofá en sala principal
+        const sofaGeometry = new THREE.BoxGeometry(8, 3, 4);
+        const sofaMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+        const sofa = new THREE.Mesh(sofaGeometry, sofaMaterial);
+        sofa.position.set(-10, 6.5, 0);
+        mansionGroup.add(sofa);
+        
+        // Mesa de centro
+        const tableGeometry = new THREE.BoxGeometry(6, 1, 3);
+        const tableMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+        const table = new THREE.Mesh(tableGeometry, tableMaterial);
+        table.position.set(-10, 5.5, 8);
+        mansionGroup.add(table);
+        
+        // Cama en dormitorio
+        const bedGeometry = new THREE.BoxGeometry(8, 2, 6);
+        const bedMaterial = new THREE.MeshLambertMaterial({ color: 0x4169E1 });
+        const bed = new THREE.Mesh(bedGeometry, bedMaterial);
+        bed.position.set(30, 6, 0);
+        mansionGroup.add(bed);
+        
+        // Cocina (isla central)
+        const kitchenGeometry = new THREE.BoxGeometry(12, 4, 6);
+        const kitchenMaterial = new THREE.MeshLambertMaterial({ color: 0xC0C0C0 });
+        const kitchen = new THREE.Mesh(kitchenGeometry, kitchenMaterial);
+        kitchen.position.set(-30, 7, -20);
+        mansionGroup.add(kitchen);
+        
+        // Escritorio en estudio
+        const deskGeometry = new THREE.BoxGeometry(10, 1, 4);
+        const deskMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+        const desk = new THREE.Mesh(deskGeometry, deskMaterial);
+        desk.position.set(-40, 6, 10);
+        mansionGroup.add(desk);
+    }
+    
+    createMansionStairs(mansionGroup) {
+        // Escaleras principales
+        for (let i = 0; i < 10; i++) {
+            const stepGeometry = new THREE.BoxGeometry(20, 1, 3);
+            const stepMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+            const step = new THREE.Mesh(stepGeometry, stepMaterial);
+            step.position.set(0, 5 + i * 1, -15 + i * 1);
+            mansionGroup.add(step);
+        }
+        
+        // Barandillas
+        const railGeometry = new THREE.BoxGeometry(2, 8, 1);
+        const railMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+        
+        const leftRail = new THREE.Mesh(railGeometry, railMaterial);
+        leftRail.position.set(-8, 10, -10);
+        mansionGroup.add(leftRail);
+        
+        const rightRail = new THREE.Mesh(railGeometry, railMaterial);
+        rightRail.position.set(8, 10, -10);
+        mansionGroup.add(rightRail);
     }
     
     createDesertRocks() {
@@ -1944,7 +2049,7 @@ class TokyoDisasterSimulator {
         // Calcular nueva posición
         const newPosition = this.player.position.clone().add(direction);
         
-        // Verificar colisiones con edificios
+        // Verificar colisiones con edificios (excepto mansión que permite entrada)
         const playerBoundingBox = new THREE.Box3(
             new THREE.Vector3(newPosition.x - 1, newPosition.y - 1, newPosition.z - 1),
             new THREE.Vector3(newPosition.x + 1, newPosition.y + 1, newPosition.z + 1)
@@ -1955,7 +2060,10 @@ class TokyoDisasterSimulator {
             if (!building.userData.isDestroyed) {
                 building.userData.boundingBox.setFromObject(building);
                 if (playerBoundingBox.intersectsBox(building.userData.boundingBox)) {
-                    canMove = false;
+                    // Permitir entrada solo a la mansión
+                    if (!building.userData.isMansion || !building.userData.allowEntry) {
+                        canMove = false;
+                    }
                 }
             }
         });
@@ -2039,7 +2147,7 @@ class TokyoDisasterSimulator {
                 
                 // Verificar colisión con el suelo
                 if (meteor.position.y <= 2) {
-                    this.playExplosionSound();
+                    // Sonido removido - solo música de fondo
                     
                     // Verificar colisión con jugador
                     const distance = meteor.position.distanceTo(this.player.position);
@@ -2388,11 +2496,11 @@ class TokyoDisasterSimulator {
     }
     
     updateDayNightCycle() {
-        // Actualizar tiempo del día
-        this.gameState.timeOfDay += this.gameState.dayNightSpeed;
-        if (this.gameState.timeOfDay >= 24) {
-            this.gameState.timeOfDay = 0;
-        }
+        // Usar tiempo real del usuario
+        const now = new Date();
+        const hours = now.getHours();
+        const minutes = now.getMinutes();
+        this.gameState.timeOfDay = hours + (minutes / 60);
         
         // Calcular colores basados en la hora
         const hour = this.gameState.timeOfDay;
