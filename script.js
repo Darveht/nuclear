@@ -1,3 +1,4 @@
+
 // Simulador 3D - Terremoto en Tokio
 class TokyoDisasterSimulator {
     constructor() {
@@ -41,9 +42,10 @@ class TokyoDisasterSimulator {
         this.phoneAlert = null;
         
         this.gameState = {
-            phase: 'exploration', // exploration, earthquake, apocalypse
-            timeToEarthquake: 30,
+            phase: 'exploration', // exploration, pre_earthquake, earthquake, nuclear_apocalypse
+            timeToEarthquake: 60, // Más tiempo para prepararse
             earthquakeIntensity: 0,
+            earthquakePhase: 0, // 0: calm, 1: tremors, 2: moderate, 3: strong, 4: devastating
             isGameOver: false
         };
         
@@ -60,7 +62,7 @@ class TokyoDisasterSimulator {
     init() {
         this.setupScene();
         this.setupLighting();
-        this.createTokyo();
+        this.createEgypt();
         this.setupControls();
         this.setupAudio();
         this.setupUI();
@@ -76,7 +78,7 @@ class TokyoDisasterSimulator {
     setupScene() {
         // Crear escena
         this.scene = new THREE.Scene();
-        this.scene.fog = new THREE.Fog(0x87CEEB, 50, 500);
+        this.scene.fog = new THREE.Fog(0xFDB813, 100, 800); // Niebla dorada del desierto
         
         // Crear cámara
         this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
@@ -85,7 +87,7 @@ class TokyoDisasterSimulator {
         // Crear renderer
         this.renderer = new THREE.WebGLRenderer({ antialias: true });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.setClearColor(0x87CEEB);
+        this.renderer.setClearColor(0xFDB813); // Cielo dorado del desierto
         this.renderer.shadowMap.enabled = true;
         this.renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         
@@ -119,23 +121,51 @@ class TokyoDisasterSimulator {
         this.scene.add(this.sunLight);
     }
     
-    createTokyo() {
-        this.createGround();
-        this.createBuildings();
-        this.createStreets();
-        this.createRefuges();
+    createEgypt() {
+        this.createSandGround();
+        this.createPyramids();
+        this.createOasis();
+        this.createUndergroundShelters();
     }
     
-    createGround() {
+    createSandGround() {
         const groundGeometry = new THREE.PlaneGeometry(1000, 1000, 100, 100);
-        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x3a3a3a });
+        const groundMaterial = new THREE.MeshLambertMaterial({ color: 0xF4A460 }); // Sandy brown
         this.ground = new THREE.Mesh(groundGeometry, groundMaterial);
         this.ground.rotation.x = -Math.PI / 2;
         this.ground.receiveShadow = true;
         this.scene.add(this.ground);
         
+        // Crear dunas de arena
+        this.createSandDunes();
+        
         // Guardar posiciones originales de vértices
         this.originalGroundVertices = [...this.ground.geometry.attributes.position.array];
+    }
+    
+    createSandDunes() {
+        for (let i = 0; i < 15; i++) {
+            const duneGeometry = new THREE.SphereGeometry(
+                Math.random() * 20 + 10,
+                16,
+                8,
+                0,
+                Math.PI * 2,
+                0,
+                Math.PI / 2
+            );
+            const duneMaterial = new THREE.MeshLambertMaterial({ color: 0xDEB887 });
+            const dune = new THREE.Mesh(duneGeometry, duneMaterial);
+            
+            dune.position.set(
+                (Math.random() - 0.5) * 800,
+                0,
+                (Math.random() - 0.5) * 800
+            );
+            dune.scale.y = 0.3;
+            
+            this.scene.add(dune);
+        }
     }
     
     createGroundCracks() {
@@ -205,136 +235,174 @@ class TokyoDisasterSimulator {
         vertices.needsUpdate = true;
     }
     
-    createBuildings() {
-        const buildingTypes = [
-            { width: 8, height: 30, depth: 8, color: 0x888888 },
-            { width: 12, height: 45, depth: 10, color: 0x666666 },
-            { width: 6, height: 20, depth: 6, color: 0x999999 },
-            { width: 15, height: 60, depth: 12, color: 0x555555 },
-            { width: 10, height: 35, depth: 8, color: 0x777777 }
+    createPyramids() {
+        const pyramidSizes = [
+            { base: 40, height: 60, color: 0xD2B48C },
+            { base: 30, height: 45, color: 0xDEB887 },
+            { base: 25, height: 35, color: 0xF4A460 },
+            { base: 50, height: 80, color: 0xD2B48C },
+            { base: 20, height: 30, color: 0xDEB887 }
         ];
         
-        for (let x = -200; x <= 200; x += 25) {
-            for (let z = -200; z <= 200; z += 25) {
-                if (Math.abs(x) < 10 && Math.abs(z) < 10) continue; // Espacio para el jugador
-                if (Math.random() > 0.7) continue; // No todos los espacios tienen edificios
-                
-                const type = buildingTypes[Math.floor(Math.random() * buildingTypes.length)];
-                const building = this.createBuilding(type);
-                building.position.set(
-                    x + (Math.random() - 0.5) * 10,
-                    type.height / 2,
-                    z + (Math.random() - 0.5) * 10
-                );
-                
-                this.buildings.push(building);
-                this.scene.add(building);
-            }
-        }
+        // Crear pirámides principales
+        const pyramidPositions = [
+            { x: -100, z: -100 },
+            { x: 120, z: -80 },
+            { x: -150, z: 120 },
+            { x: 80, z: 150 },
+            { x: 0, z: -200 },
+            { x: 200, z: 0 },
+            { x: -80, z: 80 },
+            { x: 150, z: -150 }
+        ];
+        
+        pyramidPositions.forEach((pos, index) => {
+            const size = pyramidSizes[index % pyramidSizes.length];
+            const pyramid = this.createPyramid(size);
+            pyramid.position.set(pos.x, size.height / 2, pos.z);
+            
+            this.buildings.push(pyramid);
+            this.scene.add(pyramid);
+        });
     }
     
-    createBuilding(type) {
-        const geometry = new THREE.BoxGeometry(type.width, type.height, type.depth);
-        const material = new THREE.MeshLambertMaterial({ color: type.color });
-        const building = new THREE.Mesh(geometry, material);
-        building.castShadow = true;
-        building.receiveShadow = true;
+    createPyramid(size) {
+        const geometry = new THREE.ConeGeometry(size.base, size.height, 4);
+        const material = new THREE.MeshLambertMaterial({ color: size.color });
+        const pyramid = new THREE.Mesh(geometry, material);
+        pyramid.castShadow = true;
+        pyramid.receiveShadow = true;
+        pyramid.rotation.y = Math.PI / 4; // Rotar 45 grados para que sea cuadrada
         
-        // Crear debris (escombros) para cuando se destruya
+        // Crear bloques de piedra para cuando se destruya
         const debrisGroup = new THREE.Group();
-        for (let i = 0; i < 10; i++) {
+        for (let i = 0; i < 20; i++) {
             const debrisGeometry = new THREE.BoxGeometry(
-                Math.random() * 2 + 1,
-                Math.random() * 2 + 1,
-                Math.random() * 2 + 1
+                Math.random() * 4 + 2,
+                Math.random() * 3 + 1,
+                Math.random() * 4 + 2
             );
-            const debrisMaterial = new THREE.MeshLambertMaterial({ color: type.color });
+            const debrisMaterial = new THREE.MeshLambertMaterial({ color: size.color });
             const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
             debris.position.set(
-                (Math.random() - 0.5) * type.width,
-                (Math.random() - 0.5) * type.height,
-                (Math.random() - 0.5) * type.depth
+                (Math.random() - 0.5) * size.base,
+                (Math.random() - 0.5) * size.height,
+                (Math.random() - 0.5) * size.base
             );
             debris.userData = {
                 velocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * 5,
-                    Math.random() * 3,
-                    (Math.random() - 0.5) * 5
+                    (Math.random() - 0.5) * 3,
+                    Math.random() * 2,
+                    (Math.random() - 0.5) * 3
                 ),
                 angularVelocity: new THREE.Vector3(
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2,
-                    (Math.random() - 0.5) * 0.2
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1,
+                    (Math.random() - 0.5) * 0.1
                 )
             };
             debrisGroup.add(debris);
         }
         
-        // Ventanas
-        const windowGeometry = new THREE.PlaneGeometry(1, 1);
-        const windowMaterial = new THREE.MeshBasicMaterial({ 
-            color: Math.random() > 0.3 ? 0xffff00 : 0x000044
+        // Añadir jeroglíficos simulados
+        const hieroglyphGeometry = new THREE.PlaneGeometry(3, 3);
+        const hieroglyphMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x8B4513
         });
         
-        for (let i = 0; i < 20; i++) {
-            const window = new THREE.Mesh(windowGeometry, windowMaterial);
-            window.position.set(
-                (Math.random() - 0.5) * type.width * 0.8,
-                (Math.random() - 0.5) * type.height * 0.8,
-                type.depth / 2 + 0.1
+        for (let i = 0; i < 8; i++) {
+            const hieroglyph = new THREE.Mesh(hieroglyphGeometry, hieroglyphMaterial);
+            const angle = (i / 8) * Math.PI * 2;
+            const radius = size.base * 0.7;
+            hieroglyph.position.set(
+                Math.cos(angle) * radius,
+                size.height * 0.3,
+                Math.sin(angle) * radius
             );
-            building.add(window);
+            hieroglyph.lookAt(0, size.height * 0.3, 0);
+            pyramid.add(hieroglyph);
         }
         
-        building.userData = { 
-            originalPosition: building.position.clone(),
-            originalRotation: building.rotation.clone(),
+        pyramid.userData = { 
+            originalPosition: pyramid.position.clone(),
+            originalRotation: pyramid.rotation.clone(),
             isDestroyed: false,
             fallSpeed: 0,
             destructionProgress: 0,
             debris: debrisGroup,
-            boundingBox: new THREE.Box3().setFromObject(building)
+            boundingBox: new THREE.Box3().setFromObject(pyramid),
+            isPyramid: true
         };
         
-        return building;
+        return pyramid;
     }
     
-    createStreets() {
-        // Calles horizontales
-        for (let x = -250; x <= 250; x += 50) {
-            const streetGeometry = new THREE.PlaneGeometry(500, 4);
-            const streetMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const street = new THREE.Mesh(streetGeometry, streetMaterial);
-            street.rotation.x = -Math.PI / 2;
-            street.position.set(0, 0.1, x);
-            this.scene.add(street);
-        }
-        
-        // Calles verticales
-        for (let z = -250; z <= 250; z += 50) {
-            const streetGeometry = new THREE.PlaneGeometry(4, 500);
-            const streetMaterial = new THREE.MeshLambertMaterial({ color: 0x222222 });
-            const street = new THREE.Mesh(streetGeometry, streetMaterial);
-            street.rotation.x = -Math.PI / 2;
-            street.position.set(z, 0.1, 0);
-            this.scene.add(street);
-        }
-    }
-    
-    createRefuges() {
-        const refugePositions = [
-            { x: -50, z: -50 },
-            { x: 50, z: 50 },
-            { x: -80, z: 80 },
-            { x: 100, z: -70 }
+    createOasis() {
+        // Crear oasis con agua
+        const oasisPositions = [
+            { x: 0, z: 0 },
+            { x: -180, z: 60 },
+            { x: 100, z: -120 },
+            { x: 200, z: 180 }
         ];
         
-        refugePositions.forEach(pos => {
-            // Crear entrada del refugio
-            const entranceGeometry = new THREE.BoxGeometry(8, 4, 8);
-            const entranceMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+        oasisPositions.forEach(pos => {
+            // Agua del oasis
+            const waterGeometry = new THREE.CircleGeometry(15, 32);
+            const waterMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x006994,
+                transparent: true,
+                opacity: 0.8
+            });
+            const water = new THREE.Mesh(waterGeometry, waterMaterial);
+            water.rotation.x = -Math.PI / 2;
+            water.position.set(pos.x, 0.1, pos.z);
+            this.scene.add(water);
+            
+            // Palmeras alrededor del oasis
+            for (let i = 0; i < 6; i++) {
+                const angle = (i / 6) * Math.PI * 2;
+                const radius = 20 + Math.random() * 10;
+                const palmX = pos.x + Math.cos(angle) * radius;
+                const palmZ = pos.z + Math.sin(angle) * radius;
+                
+                this.createPalm(palmX, palmZ);
+            }
+        });
+    }
+    
+    createPalm(x, z) {
+        // Tronco de palmera
+        const trunkGeometry = new THREE.CylinderGeometry(0.5, 0.8, 12, 8);
+        const trunkMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+        const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+        trunk.position.set(x, 6, z);
+        
+        // Hojas de palmera
+        const leavesGeometry = new THREE.SphereGeometry(4, 8, 8);
+        const leavesMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+        const leaves = new THREE.Mesh(leavesGeometry, leavesMaterial);
+        leaves.position.set(x, 12, z);
+        leaves.scale.y = 0.6;
+        
+        this.scene.add(trunk);
+        this.scene.add(leaves);
+    }
+    
+    createUndergroundShelters() {
+        const shelterPositions = [
+            { x: -60, z: -60 },
+            { x: 70, z: 70 },
+            { x: -90, z: 90 },
+            { x: 110, z: -80 }
+        ];
+        
+        shelterPositions.forEach(pos => {
+            // Crear entrada del bunker
+            const entranceGeometry = new THREE.CylinderGeometry(4, 4, 2, 8);
+            const entranceMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
             const entrance = new THREE.Mesh(entranceGeometry, entranceMaterial);
-            entrance.position.set(pos.x, 2, pos.z);
+            entrance.position.set(pos.x, 1, pos.z);
             
             // Crear escaleras bajando
             const stairsGeometry = new THREE.BoxGeometry(6, 1, 15);
@@ -342,33 +410,33 @@ class TokyoDisasterSimulator {
             const stairs = new THREE.Mesh(stairsGeometry, stairsMaterial);
             stairs.position.set(pos.x, -2, pos.z);
             
-            // Crear refugio subterráneo
-            const refugeGeometry = new THREE.BoxGeometry(20, 8, 20);
-            const refugeMaterial = new THREE.MeshLambertMaterial({ color: 0x00ff00 });
-            const refuge = new THREE.Mesh(refugeGeometry, refugeMaterial);
-            refuge.position.set(pos.x, -6, pos.z);
+            // Crear bunker subterráneo
+            const bunkerGeometry = new THREE.BoxGeometry(25, 10, 25);
+            const bunkerMaterial = new THREE.MeshLambertMaterial({ color: 0x556B2F });
+            const bunker = new THREE.Mesh(bunkerGeometry, bunkerMaterial);
+            bunker.position.set(pos.x, -8, pos.z);
             
-            // Señal de refugio
-            const signGeometry = new THREE.PlaneGeometry(4, 2);
+            // Señal de refugio nuclear
+            const signGeometry = new THREE.PlaneGeometry(6, 4);
             const signMaterial = new THREE.MeshBasicMaterial({ 
-                color: 0xffff00,
-                map: this.createRefugeSignTexture()
+                color: 0xFFFF00,
+                map: this.createNuclearShelterSignTexture()
             });
             const sign = new THREE.Mesh(signGeometry, signMaterial);
-            sign.position.set(pos.x, 6, pos.z);
+            sign.position.set(pos.x, 8, pos.z);
             
             entrance.userData = { isRefuge: true };
-            refuge.userData = { isRefuge: true };
+            bunker.userData = { isRefuge: true };
             
-            this.refuges.push(entrance, refuge);
+            this.refuges.push(entrance, bunker);
             this.scene.add(entrance);
             this.scene.add(stairs);
-            this.scene.add(refuge);
+            this.scene.add(bunker);
             this.scene.add(sign);
         });
     }
     
-    createRefugeSignTexture() {
+    createNuclearShelterSignTexture() {
         const canvas = document.createElement('canvas');
         canvas.width = 256;
         canvas.height = 128;
@@ -377,31 +445,32 @@ class TokyoDisasterSimulator {
         context.fillStyle = '#ffff00';
         context.fillRect(0, 0, 256, 128);
         context.fillStyle = '#000000';
-        context.font = '24px Arial';
+        context.font = '20px Arial';
         context.textAlign = 'center';
-        context.fillText('REFUGIO', 128, 50);
-        context.fillText('SHELTER', 128, 80);
+        context.fillText('☢️ BUNKER NUCLEAR', 128, 40);
+        context.fillText('NUCLEAR SHELTER', 128, 70);
+        context.fillText('☢️', 128, 100);
         
         const texture = new THREE.CanvasTexture(canvas);
         return texture;
     }
     
-    createLighthouse() {
-        // Torre del faro
-        const towerGeometry = new THREE.CylinderGeometry(3, 4, 30, 8);
-        const towerMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+    createNuclearLighthouse() {
+        // Torre del faro nuclear
+        const towerGeometry = new THREE.CylinderGeometry(4, 5, 40, 8);
+        const towerMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
         const tower = new THREE.Mesh(towerGeometry, towerMaterial);
-        tower.position.set(0, 15, 0);
+        tower.position.set(0, 20, 0);
         
-        // Luz del faro
-        const lightGeometry = new THREE.SphereGeometry(2, 8, 8);
-        const lightMaterial = new THREE.MeshBasicMaterial({ color: 0xff0000 });
+        // Luz del faro nuclear (verde radiactivo)
+        const lightGeometry = new THREE.SphereGeometry(3, 8, 8);
+        const lightMaterial = new THREE.MeshBasicMaterial({ color: 0x00ff00 });
         const light = new THREE.Mesh(lightGeometry, lightMaterial);
-        light.position.set(0, 25, 0);
+        light.position.set(0, 35, 0);
         
-        // Luz direccional del faro
-        this.lighthouseLight = new THREE.SpotLight(0xff0000, 2, 200, Math.PI / 6, 0.1);
-        this.lighthouseLight.position.set(0, 25, 0);
+        // Luz direccional del faro nuclear
+        this.lighthouseLight = new THREE.SpotLight(0x00ff00, 3, 300, Math.PI / 4, 0.1);
+        this.lighthouseLight.position.set(0, 35, 0);
         this.lighthouseLight.target.position.set(50, 0, 0);
         this.lighthouseLight.castShadow = true;
         
@@ -414,15 +483,43 @@ class TokyoDisasterSimulator {
         this.scene.add(this.lighthouse);
     }
     
+    createNuclearMeteor() {
+        const meteorGeometry = new THREE.SphereGeometry(3, 8, 8);
+        const meteorMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x00ff00
+        });
+        const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
+        
+        // Posición aleatoria en el cielo
+        meteor.position.set(
+            (Math.random() - 0.5) * 400,
+            100 + Math.random() * 50,
+            (Math.random() - 0.5) * 400
+        );
+        
+        meteor.userData = {
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 2,
+                -15 - Math.random() * 10,
+                (Math.random() - 0.5) * 2
+            ),
+            damage: 35,
+            isNuclear: true
+        };
+        
+        this.meteors.push(meteor);
+        this.scene.add(meteor);
+    }
+    
     createPhoneAlert() {
         const alertDiv = document.createElement('div');
         alertDiv.id = 'phone-alert';
         alertDiv.innerHTML = `
             <div class="phone">
                 <div class="phone-screen">
-                    <div class="alert-icon">⚠️</div>
-                    <div class="alert-title">ALERTA DE TERREMOTO</div>
-                    <div class="alert-message">Por favor refúgiese inmediatamente</div>
+                    <div class="alert-icon">☢️</div>
+                    <div class="alert-title">ALERTA NUCLEAR</div>
+                    <div class="alert-message">Terremoto detectado - Busque refugio en bunker nuclear inmediatamente</div>
                     <div class="alert-time">${new Date().toLocaleTimeString()}</div>
                 </div>
             </div>
@@ -435,7 +532,7 @@ class TokyoDisasterSimulator {
         
         setTimeout(() => {
             alertDiv.classList.remove('show');
-        }, 8000);
+        }, 10000);
     }
     
     setupControls() {
@@ -451,8 +548,8 @@ class TokyoDisasterSimulator {
         if (!this.isMobile) {
             document.addEventListener('mousemove', (e) => {
                 if (this.isLocked) {
-                    this.mouse.x += e.movementX * 0.002;
-                    this.mouse.y += e.movementY * 0.002;
+                    this.mouse.x -= e.movementX * 0.002; // Invertir horizontal
+                    this.mouse.y -= e.movementY * 0.002; // Invertir vertical
                     this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouse.y));
                 }
             });
@@ -530,8 +627,8 @@ class TokyoDisasterSimulator {
                 const deltaX = e.touches[0].clientX - this.touchLook.lastX;
                 const deltaY = e.touches[0].clientY - this.touchLook.lastY;
                 
-                this.mouse.x += deltaX * 0.005;
-                this.mouse.y += deltaY * 0.005;
+                this.mouse.x -= deltaX * 0.003; // Invertir y ajustar sensibilidad horizontal
+                this.mouse.y -= deltaY * 0.003; // Invertir y ajustar sensibilidad vertical
                 this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouse.y));
                 
                 this.touchLook.lastX = e.touches[0].clientX;
@@ -645,59 +742,95 @@ class TokyoDisasterSimulator {
     }
     
     startEarthquake() {
-        this.gameState.phase = 'earthquake';
+        this.gameState.phase = 'pre_earthquake';
         document.getElementById('timer').style.display = 'none';
-        
-        // Mantener cielo azul, crear faro rojo
-        this.createLighthouse();
         
         // Crear alerta de teléfono
         this.createPhoneAlert();
         
-        // Añadir clase earthquake al body
-        document.body.classList.add('earthquake');
-        
         // Mostrar mensaje
-        this.showStatus('¡TERREMOTO! ¡BUSCA REFUGIO!');
+        this.showStatus('Temblores detectados... ¡Busca refugio!');
         
-        // Empezar sirenas
-        this.sirenInterval = setInterval(() => {
-            this.playSirenSound();
-        }, 3000);
-        
-        // Iniciar intensidad del terremoto
-        this.gameState.earthquakeIntensity = 1;
-        
-        // Crear grietas en el suelo
-        this.createGroundCracks();
-        
-        // Después de 10 segundos, empezar fase apocalíptica
-        setTimeout(() => {
-            this.startApocalypse();
-        }, 10000);
+        // Iniciar proceso gradual del terremoto
+        this.startGradualEarthquake();
     }
     
-    startApocalypse() {
-        this.gameState.phase = 'apocalypse';
-        this.showStatus('¡METEORITOS! ¡CORRE!');
+    startGradualEarthquake() {
+        let phase = 0;
+        const earthquakeStages = [
+            { intensity: 0.1, duration: 10000, message: 'Temblores leves...' },
+            { intensity: 0.3, duration: 8000, message: 'El terremoto se intensifica...' },
+            { intensity: 0.6, duration: 6000, message: '¡TERREMOTO FUERTE!' },
+            { intensity: 1.0, duration: 5000, message: '¡TERREMOTO DEVASTADOR!' },
+            { intensity: 1.5, duration: 0, message: '¡APOCALIPSIS NUCLEAR!' }
+        ];
         
-        // Aumentar intensidad del terremoto
-        this.gameState.earthquakeIntensity = 2;
+        const progressEarthquake = () => {
+            if (phase < earthquakeStages.length) {
+                const stage = earthquakeStages[phase];
+                this.gameState.earthquakeIntensity = stage.intensity;
+                this.gameState.earthquakePhase = phase;
+                
+                this.showStatus(stage.message);
+                
+                // Añadir efectos visuales según la fase
+                if (phase === 1) {
+                    document.body.classList.add('earthquake');
+                    this.createGroundCracks();
+                }
+                
+                if (phase === 2) {
+                    this.sirenInterval = setInterval(() => {
+                        this.playSirenSound();
+                    }, 2000);
+                }
+                
+                if (phase === 3) {
+                    this.startPyramidDestruction();
+                }
+                
+                if (phase === 4) {
+                    this.startNuclearApocalypse();
+                    return;
+                }
+                
+                phase++;
+                setTimeout(progressEarthquake, stage.duration);
+            }
+        };
         
-        // Empezar a generar meteoritos
+        progressEarthquake();
+    }
+    
+    startNuclearApocalypse() {
+        this.gameState.phase = 'nuclear_apocalypse';
+        this.showStatus('¡RADIACIÓN NUCLEAR! ¡CORRE AL BUNKER!');
+        
+        // Cambiar el cielo a rojo nuclear
+        this.renderer.setClearColor(0x8B0000);
+        this.scene.fog.color.setHex(0xFF4500);
+        
+        // Crear faro de alerta nuclear
+        this.createNuclearLighthouse();
+        
+        // Empezar a generar meteoritos nucleares
         this.meteorInterval = setInterval(() => {
-            this.createMeteor();
-        }, 2000);
+            this.createNuclearMeteor();
+        }, 1500);
         
-        // Empezar destrucción de edificios
-        this.startBuildingDestruction();
+        // Efectos de radiación
+        this.radiationInterval = setInterval(() => {
+            if (!this.checkRefugeSafety()) {
+                this.player.health -= 2; // Daño por radiación
+                this.updateHealthUI();
+            }
+        }, 1000);
     }
     
     createMeteor() {
         const meteorGeometry = new THREE.SphereGeometry(2, 8, 8);
         const meteorMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xff4400,
-            emissive: 0x441100
+            color: 0xff4400
         });
         const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
         
@@ -721,14 +854,14 @@ class TokyoDisasterSimulator {
         this.scene.add(meteor);
     }
     
-    startBuildingDestruction() {
-        this.buildings.forEach((building, index) => {
+    startPyramidDestruction() {
+        this.buildings.forEach((pyramid, index) => {
             setTimeout(() => {
-                if (!building.userData.isDestroyed && Math.random() > 0.7) {
-                    building.userData.isDestroyed = true;
-                    building.userData.fallSpeed = 0.1;
+                if (!pyramid.userData.isDestroyed && Math.random() > 0.6) {
+                    pyramid.userData.isDestroyed = true;
+                    pyramid.userData.fallSpeed = 0.05; // Más lento para pirámides
                 }
-            }, Math.random() * 20000);
+            }, Math.random() * 15000);
         });
     }
     
@@ -941,8 +1074,12 @@ class TokyoDisasterSimulator {
         }
         
         this.camera.position.copy(this.player.position).add(cameraShake);
-        this.camera.rotation.x = this.mouse.y;
-        this.camera.rotation.y = this.mouse.x;
+        
+        // Aplicar rotaciones de manera correcta como en Roblox
+        this.camera.rotation.order = 'YXZ'; // Importante: orden de rotación
+        this.camera.rotation.x = this.mouse.y; // Pitch (arriba/abajo)
+        this.camera.rotation.y = this.mouse.x; // Yaw (izquierda/derecha)
+        this.camera.rotation.z = 0; // Sin roll
     }
     
     updateHealthUI() {
