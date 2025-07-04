@@ -1,3 +1,4 @@
+
 // Simulador 3D - Terremoto en Tokio
 class TokyoDisasterSimulator {
     constructor() {
@@ -958,7 +959,7 @@ class TokyoDisasterSimulator {
             1: 'Terremoto',
             2: 'Lluvia de Meteoritos',
             3: 'Granizo Mortal',
-            4: 'Plaga de Langostas'
+            4: 'Apocalipsis Nuclear'
         };
         
         document.getElementById('level-info').innerHTML = 
@@ -999,11 +1000,12 @@ class TokyoDisasterSimulator {
     startGradualEarthquake() {
         let phase = 0;
         const earthquakeStages = [
-            { intensity: 0.1, duration: 10000, message: 'Temblores leves...' },
-            { intensity: 0.3, duration: 8000, message: 'El terremoto se intensifica...' },
-            { intensity: 0.6, duration: 6000, message: '¡TERREMOTO FUERTE!' },
-            { intensity: 1.0, duration: 5000, message: '¡TERREMOTO DEVASTADOR!' },
-            { intensity: 1.5, duration: 0, message: '¡APOCALIPSIS NUCLEAR!' }
+            { intensity: 0.1, duration: 8000, message: 'Temblores leves...' },
+            { intensity: 0.3, duration: 6000, message: 'El terremoto se intensifica...' },
+            { intensity: 0.6, duration: 5000, message: '¡TERREMOTO FUERTE!' },
+            { intensity: 1.0, duration: 4000, message: '¡TERREMOTO DEVASTADOR!' },
+            { intensity: 0.8, duration: 3000, message: 'El terremoto se calma...' },
+            { intensity: 0.3, duration: 2000, message: 'Temblores finales...' }
         ];
         
         const progressEarthquake = () => {
@@ -1030,13 +1032,13 @@ class TokyoDisasterSimulator {
                     this.startPyramidDestruction();
                 }
                 
-                if (phase === 4) {
-                    this.startNuclearApocalypse();
-                    return;
-                }
-                
                 phase++;
                 setTimeout(progressEarthquake, stage.duration);
+            } else {
+                // Completar nivel 1 después de que termine el terremoto
+                setTimeout(() => {
+                    this.completeLevel();
+                }, 2000);
             }
         };
         
@@ -1073,22 +1075,8 @@ class TokyoDisasterSimulator {
     }
     
     startLocustPlague() {
-        this.gameState.phase = 'locust_plague';
-        this.showStatus('¡PLAGA DE LANGOSTAS! ¡Sobrevive!');
-        
-        this.renderer.setClearColor(0x2F2F00);
-        this.scene.fog.color.setHex(0x8B8000);
-        
-        this.createLocustSwarm();
-        
-        this.locustDamageInterval = setInterval(() => {
-            if (!this.checkRefugeSafety()) {
-                this.player.health -= 1;
-                this.updateHealthUI();
-            }
-        }, 2000);
-        
-        setTimeout(() => this.completeLevel(), 40000);
+        // Nivel 4 ahora es apocalipsis nuclear
+        this.startNuclearApocalypse();
     }
     
     createHailstone() {
@@ -1156,6 +1144,7 @@ class TokyoDisasterSimulator {
             this.gameState.phase = 'exploration';
             this.gameState.levelStartTime = Date.now();
             this.gameState.survivalTime = 0;
+            this.gameState.earthquakeIntensity = 0; // Resetear intensidad del terremoto
             
             // Restaurar cielo
             this.renderer.setClearColor(0xFDB813);
@@ -1164,6 +1153,15 @@ class TokyoDisasterSimulator {
             // Limpiar meteoros y efectos
             this.meteors.forEach(meteor => this.scene.remove(meteor));
             this.meteors = [];
+            
+            // Remover efectos de terremoto
+            document.body.classList.remove('earthquake');
+            
+            // Remover faro nuclear si existe
+            if (this.lighthouse) {
+                this.scene.remove(this.lighthouse);
+                this.lighthouse = null;
+            }
             
             // Mostrar timer nuevamente
             document.getElementById('timer').style.display = 'block';
@@ -1210,6 +1208,9 @@ class TokyoDisasterSimulator {
                 this.updateHealthUI();
             }
         }, 1000);
+        
+        // Completar nivel después de 45 segundos
+        setTimeout(() => this.completeLevel(), 45000);
     }
     
     createMeteor() {
