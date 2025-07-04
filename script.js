@@ -53,7 +53,9 @@ class TokyoDisasterSimulator {
             levelComplete: false,
             survivalTime: 0,
             levelStartTime: 0,
-            countdownInterval: null
+            countdownInterval: null,
+            timeOfDay: 0, // 0-24 hours
+            dayNightSpeed: 0.1 // Speed of day/night cycle
         };
         
         this.sounds = {
@@ -131,8 +133,12 @@ class TokyoDisasterSimulator {
     createEgypt() {
         this.createSandGround();
         this.createPyramids();
+        this.createModernMansion();
         this.createOasis();
         this.createUndergroundShelters();
+        this.createDesertRocks();
+        this.createCacti();
+        this.createSandDunesExtended();
     }
     
     createSandGround() {
@@ -471,6 +477,362 @@ class TokyoDisasterSimulator {
                 this.createPalm(palmX, palmZ);
             }
         });
+    }
+    
+    createModernMansion() {
+        const mansionGroup = new THREE.Group();
+        
+        // Edificio principal (dos pisos)
+        const mainBuildingGeometry = new THREE.BoxGeometry(80, 25, 40);
+        const mainBuildingMaterial = new THREE.MeshLambertMaterial({ color: 0xF5F5DC }); // Beige claro
+        const mainBuilding = new THREE.Mesh(mainBuildingGeometry, mainBuildingMaterial);
+        mainBuilding.position.set(0, 12.5, 0);
+        mainBuilding.castShadow = true;
+        mainBuilding.receiveShadow = true;
+        
+        // Ala izquierda (un piso)
+        const leftWingGeometry = new THREE.BoxGeometry(30, 15, 25);
+        const leftWingMaterial = new THREE.MeshLambertMaterial({ color: 0xF0F0F0 }); // Gris claro
+        const leftWing = new THREE.Mesh(leftWingGeometry, leftWingMaterial);
+        leftWing.position.set(-55, 7.5, -10);
+        leftWing.castShadow = true;
+        leftWing.receiveShadow = true;
+        
+        // Ala derecha (un piso)
+        const rightWingGeometry = new THREE.BoxGeometry(25, 12, 30);
+        const rightWingMaterial = new THREE.MeshLambertMaterial({ color: 0xF0F0F0 });
+        const rightWing = new THREE.Mesh(rightWingGeometry, rightWingMaterial);
+        rightWing.position.set(50, 6, 5);
+        rightWing.castShadow = true;
+        rightWing.receiveShadow = true;
+        
+        // Techo principal (plano moderno)
+        const mainRoofGeometry = new THREE.BoxGeometry(82, 2, 42);
+        const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
+        const mainRoof = new THREE.Mesh(mainRoofGeometry, roofMaterial);
+        mainRoof.position.set(0, 26, 0);
+        
+        // Techos de las alas
+        const leftRoofGeometry = new THREE.BoxGeometry(32, 2, 27);
+        const leftRoof = new THREE.Mesh(leftRoofGeometry, roofMaterial);
+        leftRoof.position.set(-55, 16, -10);
+        
+        const rightRoofGeometry = new THREE.BoxGeometry(27, 2, 32);
+        const rightRoof = new THREE.Mesh(rightRoofGeometry, roofMaterial);
+        rightRoof.position.set(50, 13, 5);
+        
+        // Ventanas grandes (estilo moderno)
+        this.createMansionWindows(mansionGroup);
+        
+        // Piscina moderna
+        this.createMansionPool(mansionGroup);
+        
+        // Entrada principal con columnas
+        this.createMansionEntrance(mansionGroup);
+        
+        // Garaje moderno
+        this.createMansionGarage(mansionGroup);
+        
+        // Iluminación exterior
+        this.createMansionLighting(mansionGroup);
+        
+        // Jardín moderno
+        this.createMansionGarden(mansionGroup);
+        
+        mansionGroup.add(mainBuilding);
+        mansionGroup.add(leftWing);
+        mansionGroup.add(rightWing);
+        mansionGroup.add(mainRoof);
+        mansionGroup.add(leftRoof);
+        mansionGroup.add(rightRoof);
+        
+        // Posicionar la mansión en el desierto
+        mansionGroup.position.set(200, 0, -200);
+        
+        mansionGroup.userData = {
+            originalPosition: mansionGroup.position.clone(),
+            originalRotation: mansionGroup.rotation.clone(),
+            isDestroyed: false,
+            boundingBox: new THREE.Box3().setFromObject(mansionGroup)
+        };
+        
+        this.buildings.push(mansionGroup);
+        this.scene.add(mansionGroup);
+    }
+    
+    createMansionWindows(mansionGroup) {
+        // Ventanas del edificio principal (grandes ventanales)
+        const windowMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x87CEEB,
+            transparent: true,
+            opacity: 0.7
+        });
+        
+        // Ventanas frontales
+        for (let i = 0; i < 4; i++) {
+            const windowGeometry = new THREE.PlaneGeometry(8, 12);
+            const window = new THREE.Mesh(windowGeometry, windowMaterial);
+            window.position.set(-24 + i * 16, 15, 20.1);
+            mansionGroup.add(window);
+            
+            // Ventanas segundo piso
+            const window2 = new THREE.Mesh(windowGeometry, windowMaterial);
+            window2.position.set(-24 + i * 16, 25, 20.1);
+            mansionGroup.add(window2);
+        }
+        
+        // Ventanas laterales
+        for (let i = 0; i < 3; i++) {
+            const windowGeometry = new THREE.PlaneGeometry(6, 10);
+            const window = new THREE.Mesh(windowGeometry, windowMaterial);
+            window.position.set(40.1, 12 + i * 8, -15 + i * 15);
+            window.rotation.y = Math.PI / 2;
+            mansionGroup.add(window);
+        }
+    }
+    
+    createMansionPool(mansionGroup) {
+        // Piscina rectangular moderna
+        const poolGeometry = new THREE.BoxGeometry(40, 2, 20);
+        const poolMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0x006994,
+            transparent: true,
+            opacity: 0.8
+        });
+        const pool = new THREE.Mesh(poolGeometry, poolMaterial);
+        pool.position.set(0, -0.5, 40);
+        mansionGroup.add(pool);
+        
+        // Borde de la piscina
+        const poolBorderGeometry = new THREE.BoxGeometry(44, 1, 24);
+        const poolBorderMaterial = new THREE.MeshLambertMaterial({ color: 0xC0C0C0 });
+        const poolBorder = new THREE.Mesh(poolBorderGeometry, poolBorderMaterial);
+        poolBorder.position.set(0, 0.5, 40);
+        mansionGroup.add(poolBorder);
+        
+        // Tumbonas junto a la piscina
+        for (let i = 0; i < 4; i++) {
+            const chairGeometry = new THREE.BoxGeometry(3, 1, 8);
+            const chairMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+            const chair = new THREE.Mesh(chairGeometry, chairMaterial);
+            chair.position.set(-15 + i * 10, 1, 55);
+            mansionGroup.add(chair);
+        }
+    }
+    
+    createMansionEntrance(mansionGroup) {
+        // Columnas de entrada modernas
+        for (let i = 0; i < 2; i++) {
+            const columnGeometry = new THREE.CylinderGeometry(1.5, 1.5, 15, 8);
+            const columnMaterial = new THREE.MeshLambertMaterial({ color: 0xD3D3D3 });
+            const column = new THREE.Mesh(columnGeometry, columnMaterial);
+            column.position.set(-8 + i * 16, 7.5, 25);
+            mansionGroup.add(column);
+        }
+        
+        // Puerta principal grande
+        const doorGeometry = new THREE.BoxGeometry(6, 12, 0.5);
+        const doorMaterial = new THREE.MeshLambertMaterial({ color: 0x654321 });
+        const door = new THREE.Mesh(doorGeometry, doorMaterial);
+        door.position.set(0, 6, 20.5);
+        mansionGroup.add(door);
+        
+        // Escalones de entrada
+        for (let i = 0; i < 3; i++) {
+            const stepGeometry = new THREE.BoxGeometry(20, 1, 3);
+            const stepMaterial = new THREE.MeshLambertMaterial({ color: 0xA9A9A9 });
+            const step = new THREE.Mesh(stepGeometry, stepMaterial);
+            step.position.set(0, i * 1, 22 + i * 1.5);
+            mansionGroup.add(step);
+        }
+    }
+    
+    createMansionGarage(mansionGroup) {
+        // Garaje para varios coches
+        const garageGeometry = new THREE.BoxGeometry(25, 12, 20);
+        const garageMaterial = new THREE.MeshLambertMaterial({ color: 0xE0E0E0 });
+        const garage = new THREE.Mesh(garageGeometry, garageMaterial);
+        garage.position.set(-70, 6, 20);
+        mansionGroup.add(garage);
+        
+        // Puertas del garaje
+        for (let i = 0; i < 2; i++) {
+            const garageDoorGeometry = new THREE.PlaneGeometry(10, 10);
+            const garageDoorMaterial = new THREE.MeshLambertMaterial({ color: 0x708090 });
+            const garageDoor = new THREE.Mesh(garageDoorGeometry, garageDoorMaterial);
+            garageDoor.position.set(-75 + i * 10, 6, 30.1);
+            mansionGroup.add(garageDoor);
+        }
+    }
+    
+    createMansionLighting(mansionGroup) {
+        // Luces exteriores modernas
+        const lightPositions = [
+            { x: -30, z: 30 },
+            { x: 30, z: 30 },
+            { x: -60, z: 10 },
+            { x: 60, z: 10 }
+        ];
+        
+        lightPositions.forEach(pos => {
+            // Poste de luz moderno
+            const poleGeometry = new THREE.CylinderGeometry(0.3, 0.3, 8, 8);
+            const poleMaterial = new THREE.MeshLambertMaterial({ color: 0x2F2F2F });
+            const pole = new THREE.Mesh(poleGeometry, poleMaterial);
+            pole.position.set(pos.x, 4, pos.z);
+            
+            // Luz
+            const lightGeometry = new THREE.SphereGeometry(1, 8, 8);
+            const lightMaterial = new THREE.MeshBasicMaterial({ color: 0xFFFFAA });
+            const light = new THREE.Mesh(lightGeometry, lightMaterial);
+            light.position.set(pos.x, 8, pos.z);
+            
+            // Luz point light para iluminación real
+            const pointLight = new THREE.PointLight(0xFFFFAA, 1, 50);
+            pointLight.position.set(pos.x, 8, pos.z);
+            
+            mansionGroup.add(pole);
+            mansionGroup.add(light);
+            mansionGroup.add(pointLight);
+        });
+    }
+    
+    createMansionGarden(mansionGroup) {
+        // Jardín moderno con diseño geométrico
+        const gardenPositions = [
+            { x: -20, z: 60, size: 8 },
+            { x: 20, z: 60, size: 6 },
+            { x: -40, z: 45, size: 10 },
+            { x: 40, z: 45, size: 7 }
+        ];
+        
+        gardenPositions.forEach(pos => {
+            // Base de césped circular
+            const grassGeometry = new THREE.CircleGeometry(pos.size, 16);
+            const grassMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22 });
+            const grass = new THREE.Mesh(grassGeometry, grassMaterial);
+            grass.rotation.x = -Math.PI / 2;
+            grass.position.set(pos.x, 0.1, pos.z);
+            
+            // Plantas ornamentales
+            for (let i = 0; i < 3; i++) {
+                const plantGeometry = new THREE.SphereGeometry(1.5, 8, 8);
+                const plantMaterial = new THREE.MeshLambertMaterial({ color: 0x006400 });
+                const plant = new THREE.Mesh(plantGeometry, plantMaterial);
+                const angle = (i / 3) * Math.PI * 2;
+                plant.position.set(
+                    pos.x + Math.cos(angle) * pos.size * 0.6,
+                    1.5,
+                    pos.z + Math.sin(angle) * pos.size * 0.6
+                );
+                mansionGroup.add(plant);
+            }
+            
+            mansionGroup.add(grass);
+        });
+    }
+    
+    createDesertRocks() {
+        // Rocas del desierto distribuidas por el mapa
+        for (let i = 0; i < 30; i++) {
+            const rockGeometry = new THREE.DodecahedronGeometry(
+                Math.random() * 5 + 2
+            );
+            const rockMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x8B7D6B
+            });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            
+            rock.position.set(
+                (Math.random() - 0.5) * 900,
+                Math.random() * 2,
+                (Math.random() - 0.5) * 900
+            );
+            rock.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            rock.castShadow = true;
+            rock.receiveShadow = true;
+            
+            this.scene.add(rock);
+        }
+    }
+    
+    createCacti() {
+        // Cactus del desierto
+        for (let i = 0; i < 25; i++) {
+            const cactusGroup = new THREE.Group();
+            
+            // Tronco principal del cactus
+            const trunkGeometry = new THREE.CylinderGeometry(1, 1.5, 8, 8);
+            const cactusColor = 0x228B22;
+            const trunkMaterial = new THREE.MeshLambertMaterial({ color: cactusColor });
+            const trunk = new THREE.Mesh(trunkGeometry, trunkMaterial);
+            trunk.position.y = 4;
+            
+            // Brazos del cactus
+            if (Math.random() > 0.5) {
+                const armGeometry = new THREE.CylinderGeometry(0.7, 0.8, 4, 8);
+                const arm = new THREE.Mesh(armGeometry, trunkMaterial);
+                arm.position.set(2, 6, 0);
+                arm.rotation.z = Math.PI / 3;
+                cactusGroup.add(arm);
+            }
+            
+            if (Math.random() > 0.7) {
+                const armGeometry = new THREE.CylinderGeometry(0.6, 0.7, 3, 8);
+                const arm = new THREE.Mesh(armGeometry, trunkMaterial);
+                arm.position.set(-1.5, 7, 0);
+                arm.rotation.z = -Math.PI / 4;
+                cactusGroup.add(arm);
+            }
+            
+            cactusGroup.add(trunk);
+            
+            cactusGroup.position.set(
+                (Math.random() - 0.5) * 800,
+                0,
+                (Math.random() - 0.5) * 800
+            );
+            
+            cactusGroup.castShadow = true;
+            cactusGroup.receiveShadow = true;
+            
+            this.scene.add(cactusGroup);
+        }
+    }
+    
+    createSandDunesExtended() {
+        // Dunas de arena más variadas y realistas
+        for (let i = 0; i < 10; i++) {
+            const duneGeometry = new THREE.SphereGeometry(
+                Math.random() * 25 + 15,
+                16,
+                8,
+                0,
+                Math.PI * 2,
+                0,
+                Math.PI / 2
+            );
+            const duneMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0xDEB887
+            });
+            const dune = new THREE.Mesh(duneGeometry, duneMaterial);
+            
+            dune.position.set(
+                (Math.random() - 0.5) * 900,
+                0,
+                (Math.random() - 0.5) * 900
+            );
+            dune.scale.y = 0.2 + Math.random() * 0.3;
+            dune.rotation.y = Math.random() * Math.PI * 2;
+            
+            dune.receiveShadow = true;
+            
+            this.scene.add(dune);
+        }
     }
     
     createPalm(x, z) {
@@ -2002,6 +2364,7 @@ class TokyoDisasterSimulator {
         this.updateMeteors();
         this.updateBuildings();
         this.updateCamera();
+        this.updateDayNightCycle();
         
         // Rotar el faro
         if (this.lighthouse && this.gameState.phase !== 'exploration') {
@@ -2022,6 +2385,121 @@ class TokyoDisasterSimulator {
         }
         
         this.renderer.render(this.scene, this.camera);
+    }
+    
+    updateDayNightCycle() {
+        // Actualizar tiempo del día
+        this.gameState.timeOfDay += this.gameState.dayNightSpeed;
+        if (this.gameState.timeOfDay >= 24) {
+            this.gameState.timeOfDay = 0;
+        }
+        
+        // Calcular colores basados en la hora
+        const hour = this.gameState.timeOfDay;
+        let skyColor, fogColor, sunIntensity;
+        
+        if (hour >= 6 && hour < 8) {
+            // Amanecer (6:00 - 8:00)
+            const t = (hour - 6) / 2;
+            skyColor = this.interpolateColor(0x191970, 0xFDB813, t); // Azul oscuro a dorado
+            fogColor = this.interpolateColor(0x4B0082, 0xFDB813, t);
+            sunIntensity = 0.3 + t * 0.7;
+        } else if (hour >= 8 && hour < 18) {
+            // Día (8:00 - 18:00)
+            skyColor = 0xFDB813; // Dorado del desierto
+            fogColor = 0xFDB813;
+            sunIntensity = 1.0;
+        } else if (hour >= 18 && hour < 20) {
+            // Atardecer (18:00 - 20:00)
+            const t = (hour - 18) / 2;
+            skyColor = this.interpolateColor(0xFDB813, 0xFF4500, t); // Dorado a naranja
+            fogColor = this.interpolateColor(0xFDB813, 0xFF6347, t);
+            sunIntensity = 1.0 - t * 0.5;
+        } else if (hour >= 20 && hour < 22) {
+            // Crepúsculo (20:00 - 22:00)
+            const t = (hour - 20) / 2;
+            skyColor = this.interpolateColor(0xFF4500, 0x191970, t); // Naranja a azul oscuro
+            fogColor = this.interpolateColor(0xFF6347, 0x2F2F4F, t);
+            sunIntensity = 0.5 - t * 0.3;
+        } else {
+            // Noche (22:00 - 6:00)
+            skyColor = 0x191970; // Azul nocturno
+            fogColor = 0x2F2F4F;
+            sunIntensity = 0.2;
+        }
+        
+        // Aplicar cambios solo si no estamos en una fase de desastre
+        if (this.gameState.phase === 'exploration') {
+            this.renderer.setClearColor(skyColor);
+            this.scene.fog.color.setHex(fogColor);
+            this.sunLight.intensity = sunIntensity;
+            
+            // Mover posición del sol
+            const sunAngle = (hour / 24) * Math.PI * 2 - Math.PI / 2;
+            this.sunLight.position.set(
+                Math.cos(sunAngle) * 200,
+                Math.sin(sunAngle) * 200 + 50,
+                50
+            );
+            
+            // Cambiar color de la luz del sol
+            if (hour >= 18 && hour <= 20) {
+                this.sunLight.color.setHex(0xFF6347); // Naranja al atardecer
+            } else if (hour >= 6 && hour <= 8) {
+                this.sunLight.color.setHex(0xFFD700); // Dorado al amanecer
+            } else if (hour > 20 || hour < 6) {
+                this.sunLight.color.setHex(0x4169E1); // Azul en la noche
+            } else {
+                this.sunLight.color.setHex(0xFFFFFF); // Blanco durante el día
+            }
+        }
+        
+        // Mostrar hora en la UI
+        this.updateTimeUI();
+    }
+    
+    interpolateColor(color1, color2, t) {
+        const r1 = (color1 >> 16) & 255;
+        const g1 = (color1 >> 8) & 255;
+        const b1 = color1 & 255;
+        
+        const r2 = (color2 >> 16) & 255;
+        const g2 = (color2 >> 8) & 255;
+        const b2 = color2 & 255;
+        
+        const r = Math.round(r1 + (r2 - r1) * t);
+        const g = Math.round(g1 + (g2 - g1) * t);
+        const b = Math.round(b1 + (b2 - b1) * t);
+        
+        return (r << 16) | (g << 8) | b;
+    }
+    
+    updateTimeUI() {
+        const hour = Math.floor(this.gameState.timeOfDay);
+        const minute = Math.floor((this.gameState.timeOfDay - hour) * 60);
+        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+        
+        let timeDisplay = document.getElementById('time-display');
+        if (!timeDisplay) {
+            timeDisplay = document.createElement('div');
+            timeDisplay.id = 'time-display';
+            timeDisplay.style.background = 'rgba(0, 0, 0, 0.7)';
+            timeDisplay.style.color = 'white';
+            timeDisplay.style.padding = '8px 12px';
+            timeDisplay.style.borderRadius = '5px';
+            timeDisplay.style.marginBottom = '10px';
+            timeDisplay.style.fontWeight = 'bold';
+            timeDisplay.style.fontSize = '16px';
+            document.getElementById('ui-overlay').appendChild(timeDisplay);
+        }
+        
+        let timeOfDayText = '';
+        if (hour >= 6 && hour < 12) timeOfDayText = '🌅 Mañana';
+        else if (hour >= 12 && hour < 18) timeOfDayText = '☀️ Tarde';
+        else if (hour >= 18 && hour < 22) timeOfDayText = '🌆 Atardecer';
+        else timeOfDayText = '🌙 Noche';
+        
+        timeDisplay.innerHTML = `🕐 ${timeString} - ${timeOfDayText}`;
     }
 }
 
