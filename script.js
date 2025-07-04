@@ -1331,8 +1331,58 @@ class TokyoDisasterSimulator {
         this.backgroundMusic = null;
         this.musicGain = null;
         
+        // Configurar síntesis de voz
+        this.setupVoiceSynthesis();
+        
         // Sonidos simulados con oscilladores
         this.createAmbientSound();
+    }
+    
+    setupVoiceSynthesis() {
+        // Verificar si el navegador soporta síntesis de voz
+        if ('speechSynthesis' in window) {
+            this.speechSynth = window.speechSynthesis;
+            this.voiceInitialized = false;
+            
+            // Configurar la voz cuando esté disponible
+            const setupVoice = () => {
+                const voices = this.speechSynth.getVoices();
+                // Buscar voces en español
+                this.selectedVoice = voices.find(voice => 
+                    voice.lang.includes('es') || voice.name.includes('Spanish')
+                ) || voices[0]; // Usar la primera voz disponible si no hay español
+                
+                this.voiceInitialized = true;
+            };
+            
+            // Configurar voz inmediatamente si ya están disponibles
+            if (this.speechSynth.getVoices().length > 0) {
+                setupVoice();
+            } else {
+                // Esperar a que las voces se carguen
+                this.speechSynth.addEventListener('voiceschanged', setupVoice);
+            }
+        }
+    }
+    
+    speakRoboticInstruction(message) {
+        if (!this.speechSynth || !this.voiceInitialized) return;
+        
+        // Cancelar cualquier voz anterior
+        this.speechSynth.cancel();
+        
+        // Crear nueva declaración
+        const utterance = new SpeechSynthesisUtterance(message);
+        
+        // Configurar para que suene robótico
+        utterance.voice = this.selectedVoice;
+        utterance.rate = 0.8; // Más lento para efecto robótico
+        utterance.pitch = 0.3; // Más grave
+        utterance.volume = 0.9;
+        utterance.lang = 'es-ES'; // Español
+        
+        // Reproducir
+        this.speechSynth.speak(utterance);
     }
     
     createAmbientSound() {
@@ -1681,12 +1731,42 @@ class TokyoDisasterSimulator {
     startGradualEarthquake() {
         let phase = 0;
         const earthquakeStages = [
-            { intensity: 0.1, duration: 8000, message: 'Temblores leves...' },
-            { intensity: 0.3, duration: 6000, message: 'El terremoto se intensifica...' },
-            { intensity: 0.6, duration: 5000, message: '¡TERREMOTO FUERTE!' },
-            { intensity: 1.0, duration: 4000, message: '¡TERREMOTO DEVASTADOR!' },
-            { intensity: 0.8, duration: 3000, message: 'El terremoto se calma...' },
-            { intensity: 0.3, duration: 2000, message: 'Temblores finales...' }
+            { 
+                intensity: 0.1, 
+                duration: 8000, 
+                message: 'Temblores leves...', 
+                voiceMessage: 'Atención. Temblores sísmicos detectados. Manténganse alerta. Prepárense para buscar refugio.'
+            },
+            { 
+                intensity: 0.3, 
+                duration: 6000, 
+                message: 'El terremoto se intensifica...', 
+                voiceMessage: 'Alerta sísmica nivel dos. El terremoto se intensifica. Diríjanse al refugio más cercano inmediatamente.'
+            },
+            { 
+                intensity: 0.6, 
+                duration: 5000, 
+                message: '¡TERREMOTO FUERTE!', 
+                voiceMessage: 'Emergencia sísmica. Terremoto de alta intensidad. Busquen refugio en bunkers subterráneos. Aléjense de pirámides y estructuras altas.'
+            },
+            { 
+                intensity: 1.0, 
+                duration: 4000, 
+                message: '¡TERREMOTO DEVASTADOR!', 
+                voiceMessage: 'Alerta máxima. Terremoto devastador en curso. Permanezcan en bunkers. Las estructuras están colapsando. Protocolo de emergencia activado.'
+            },
+            { 
+                intensity: 0.8, 
+                duration: 3000, 
+                message: 'El terremoto se calma...', 
+                voiceMessage: 'La actividad sísmica está disminuyendo. Manténganse en refugios hasta nueva orden.'
+            },
+            { 
+                intensity: 0.3, 
+                duration: 2000, 
+                message: 'Temblores finales...', 
+                voiceMessage: 'Temblores residuales detectados. Precaución al salir de refugios. Evalúen daños estructurales.'
+            }
         ];
         
         const progressEarthquake = () => {
@@ -1696,6 +1776,9 @@ class TokyoDisasterSimulator {
                 this.gameState.earthquakePhase = phase;
                 
                 this.showStatus(stage.message);
+                
+                // Reproducir instrucciones de voz robótica
+                this.speakRoboticInstruction(stage.voiceMessage);
                 
                 // Añadir efectos visuales según la fase
                 if (phase === 1) {
@@ -1730,6 +1813,9 @@ class TokyoDisasterSimulator {
         this.gameState.phase = 'meteor_rain';
         this.showStatus('¡LLUVIA DE METEORITOS! ¡Esquívalos!');
         
+        // Instrucción de voz inicial
+        this.speakRoboticInstruction('Alerta meteorológica extrema. Lluvia de meteoritos detectada. Busquen refugio inmediatamente. Eviten permanecer al aire libre. Los meteoritos causan daño severo.');
+        
         // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
         this.playDisasterMusic();
         
@@ -1744,6 +1830,18 @@ class TokyoDisasterSimulator {
             }
         }, 600);
         
+        // Instrucciones periódicas durante el evento
+        this.meteorVoiceInterval = setInterval(() => {
+            const instructions = [
+                'Manténganse en refugios subterráneos. Los meteoritos continúan cayendo.',
+                'Eviten salir al exterior. Impactos de meteoritos en curso.',
+                'Refugio obligatorio. La lluvia de meteoritos persiste.',
+                'Permanezcan a cubierto. Riesgo extremo de impacto meteorítico.'
+            ];
+            const randomInstruction = instructions[Math.floor(Math.random() * instructions.length)];
+            this.speakRoboticInstruction(randomInstruction);
+        }, 15000);
+        
         // Completar nivel después de 60 segundos
         setTimeout(() => this.completeLevel(), 60000);
     }
@@ -1751,6 +1849,9 @@ class TokyoDisasterSimulator {
     startHailstorm() {
         this.gameState.phase = 'hailstorm';
         this.showStatus('¡GRANIZO MORTAL! ¡Busca refugio!');
+        
+        // Instrucción de voz inicial
+        this.speakRoboticInstruction('Alerta meteorológica severa. Tormenta de granizo mortal en curso. Busquen refugio inmediato bajo techo sólido. El granizo puede causar lesiones graves.');
         
         // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
         this.playDisasterMusic();
@@ -1761,6 +1862,18 @@ class TokyoDisasterSimulator {
         this.hailInterval = setInterval(() => {
             this.createHailstone();
         }, 300);
+        
+        // Instrucciones periódicas
+        this.hailVoiceInterval = setInterval(() => {
+            const instructions = [
+                'Permanezcan bajo refugio sólido. El granizo continúa siendo peligroso.',
+                'No salgan al exterior. Granizo de gran tamaño detectado.',
+                'Manténganse a cubierto. La tormenta de granizo persiste.',
+                'Refugio obligatorio. Riesgo de lesiones por granizo.'
+            ];
+            const randomInstruction = instructions[Math.floor(Math.random() * instructions.length)];
+            this.speakRoboticInstruction(randomInstruction);
+        }, 12000);
         
         setTimeout(() => this.completeLevel(), 45000);
     }
@@ -1867,6 +1980,7 @@ class TokyoDisasterSimulator {
             }, 3000);
         } else {
             this.showStatus('¡FELICIDADES! ¡Has sobrevivido a todas las plagas de Egipto!');
+            this.speakRoboticInstruction('Felicidades, superviviente. Ha completado exitosamente todos los protocolos de emergencia. Misión cumplida. Has sobrevivido a todas las catástrofes de Egipto. Fin de la simulación.');
             this.gameState.isGameOver = true;
         }
     }
@@ -1879,6 +1993,16 @@ class TokyoDisasterSimulator {
         if (this.radiationInterval) clearInterval(this.radiationInterval);
         if (this.drumInterval) clearInterval(this.drumInterval);
         
+        // Limpiar intervalos de voz
+        if (this.meteorVoiceInterval) clearInterval(this.meteorVoiceInterval);
+        if (this.hailVoiceInterval) clearInterval(this.hailVoiceInterval);
+        if (this.nuclearVoiceInterval) clearInterval(this.nuclearVoiceInterval);
+        
+        // Parar síntesis de voz
+        if (this.speechSynth) {
+            this.speechSynth.cancel();
+        }
+        
         // Parar música de fondo
         this.stopBackgroundMusic();
     }
@@ -1886,6 +2010,9 @@ class TokyoDisasterSimulator {
     startNuclearApocalypse() {
         this.gameState.phase = 'nuclear_apocalypse';
         this.showStatus('¡RADIACIÓN NUCLEAR! ¡CORRE AL BUNKER!');
+        
+        // Instrucción de voz inicial urgente
+        this.speakRoboticInstruction('Emergencia nuclear. Nivel de radiación crítico. Diríjanse al bunker nuclear más cercano inmediatamente. La exposición prolongada es letal. Protocolo de emergencia nuclear activado.');
         
         // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
         this.playDisasterMusic();
@@ -1909,6 +2036,19 @@ class TokyoDisasterSimulator {
                 this.updateHealthUI();
             }
         }, 1000);
+        
+        // Instrucciones críticas periódicas
+        this.nuclearVoiceInterval = setInterval(() => {
+            const instructions = [
+                'Atención. Niveles de radiación letales. Permanezcan en bunkers nucleares.',
+                'Emergencia nuclear en curso. No salgan de refugios hasta nueva orden.',
+                'Radiación extrema detectada. Solo los bunkers nucleares brindan protección.',
+                'Protocolo de supervivencia nuclear. Manténganse en refugios sellados.',
+                'Alerta máxima. La exposición a radiación causa daño inmediato.'
+            ];
+            const randomInstruction = instructions[Math.floor(Math.random() * instructions.length)];
+            this.speakRoboticInstruction(randomInstruction);
+        }, 10000);
         
         // Completar nivel después de 45 segundos
         setTimeout(() => this.completeLevel(), 45000);
