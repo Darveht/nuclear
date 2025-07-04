@@ -29,7 +29,8 @@ class TokyoDisasterSimulator {
         this.touchLook = {
             active: false,
             lastX: 0,
-            lastY: 0
+            lastY: 0,
+            identifier: null
         };
         this.runPressed = false;
         
@@ -42,7 +43,7 @@ class TokyoDisasterSimulator {
         
         this.gameState = {
             phase: 'exploration', // exploration, pre_earthquake, earthquake, nuclear_apocalypse
-            timeToEarthquake: 50, // Nivel 1: 50 segundos
+            timeToEarthquake: 60, // Nivel 1: 60 segundos
             earthquakeIntensity: 0,
             earthquakePhase: 0, // 0: calm, 1: tremors, 2: moderate, 3: strong, 4: devastating
             isGameOver: false,
@@ -50,7 +51,8 @@ class TokyoDisasterSimulator {
             maxLevel: 4,
             levelComplete: false,
             survivalTime: 0,
-            levelStartTime: 0
+            levelStartTime: 0,
+            countdownInterval: null
         };
         
         this.sounds = {
@@ -497,41 +499,83 @@ class TokyoDisasterSimulator {
         ];
         
         shelterPositions.forEach(pos => {
-            // Crear entrada del bunker
-            const entranceGeometry = new THREE.CylinderGeometry(4, 4, 2, 8);
+            // Crear entrada del bunker MÁS GRANDE
+            const entranceGeometry = new THREE.CylinderGeometry(8, 8, 4, 8);
             const entranceMaterial = new THREE.MeshLambertMaterial({ color: 0x696969 });
             const entrance = new THREE.Mesh(entranceGeometry, entranceMaterial);
-            entrance.position.set(pos.x, 1, pos.z);
+            entrance.position.set(pos.x, 2, pos.z);
             
-            // Crear escaleras bajando
-            const stairsGeometry = new THREE.BoxGeometry(6, 1, 15);
+            // Crear escaleras bajando MÁS ANCHAS
+            const stairsGeometry = new THREE.BoxGeometry(12, 2, 20);
             const stairsMaterial = new THREE.MeshLambertMaterial({ color: 0x444444 });
             const stairs = new THREE.Mesh(stairsGeometry, stairsMaterial);
-            stairs.position.set(pos.x, -2, pos.z);
+            stairs.position.set(pos.x, -3, pos.z);
             
-            // Crear bunker subterráneo
-            const bunkerGeometry = new THREE.BoxGeometry(25, 10, 25);
+            // Crear bunker subterráneo MUCHO MÁS GRANDE
+            const bunkerGeometry = new THREE.BoxGeometry(50, 20, 50);
             const bunkerMaterial = new THREE.MeshLambertMaterial({ color: 0x556B2F });
             const bunker = new THREE.Mesh(bunkerGeometry, bunkerMaterial);
-            bunker.position.set(pos.x, -8, pos.z);
+            bunker.position.set(pos.x, -15, pos.z);
             
-            // Señal de refugio nuclear
-            const signGeometry = new THREE.PlaneGeometry(6, 4);
+            // Crear paredes del bunker
+            const wallGeometry = new THREE.BoxGeometry(60, 25, 4);
+            const wallMaterial = new THREE.MeshLambertMaterial({ color: 0x3C3C3C });
+            
+            // Paredes norte y sur
+            const wallNorth = new THREE.Mesh(wallGeometry, wallMaterial);
+            wallNorth.position.set(pos.x, -15, pos.z + 30);
+            const wallSouth = new THREE.Mesh(wallGeometry, wallMaterial);
+            wallSouth.position.set(pos.x, -15, pos.z - 30);
+            
+            // Paredes este y oeste
+            const wallGeometry2 = new THREE.BoxGeometry(4, 25, 60);
+            const wallEast = new THREE.Mesh(wallGeometry2, wallMaterial);
+            wallEast.position.set(pos.x + 30, -15, pos.z);
+            const wallWest = new THREE.Mesh(wallGeometry2, wallMaterial);
+            wallWest.position.set(pos.x - 30, -15, pos.z);
+            
+            // Techo del bunker
+            const roofGeometry = new THREE.BoxGeometry(60, 4, 60);
+            const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x2F2F2F });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.set(pos.x, -5, pos.z);
+            
+            // Señal de refugio nuclear MÁS GRANDE Y VISIBLE
+            const signGeometry = new THREE.PlaneGeometry(15, 10);
             const signMaterial = new THREE.MeshBasicMaterial({ 
                 color: 0xFFFF00,
                 map: this.createNuclearShelterSignTexture()
             });
             const sign = new THREE.Mesh(signGeometry, signMaterial);
-            sign.position.set(pos.x, 8, pos.z);
+            sign.position.set(pos.x, 15, pos.z);
+            
+            // Añadir luces dentro del bunker
+            const bunkerLight = new THREE.PointLight(0x00ff00, 2, 100);
+            bunkerLight.position.set(pos.x, -10, pos.z);
+            this.scene.add(bunkerLight);
+            
+            // Torre de ventilación visible
+            const ventGeometry = new THREE.CylinderGeometry(2, 2, 12, 8);
+            const ventMaterial = new THREE.MeshLambertMaterial({ color: 0x808080 });
+            const ventTower = new THREE.Mesh(ventGeometry, ventMaterial);
+            ventTower.position.set(pos.x + 15, 6, pos.z + 15);
             
             entrance.userData = { isRefuge: true };
             bunker.userData = { isRefuge: true };
+            stairs.userData = { isRefuge: true };
+            roof.userData = { isRefuge: true };
             
-            this.refuges.push(entrance, bunker);
+            this.refuges.push(entrance, bunker, stairs, roof);
             this.scene.add(entrance);
             this.scene.add(stairs);
             this.scene.add(bunker);
+            this.scene.add(wallNorth);
+            this.scene.add(wallSouth);
+            this.scene.add(wallEast);
+            this.scene.add(wallWest);
+            this.scene.add(roof);
             this.scene.add(sign);
+            this.scene.add(ventTower);
         });
     }
     
@@ -711,52 +755,45 @@ class TokyoDisasterSimulator {
             runButton.style.transform = 'scale(1)';
         });
         
-        // Touch look controls (for camera) - improved multi-touch support
+        // Touch look controls (for camera) - ALWAYS ACTIVE for mobile
         this.renderer.domElement.addEventListener('touchstart', (e) => {
-            // Check if this is a camera control touch (not joystick)
-            const touch = e.touches[0];
-            const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
-            const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
-            
-            const isInJoystickArea = touch.clientX >= joystickArea.left && 
-                                   touch.clientX <= joystickArea.right && 
-                                   touch.clientY >= joystickArea.top && 
-                                   touch.clientY <= joystickArea.bottom;
-            
-            const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
-                                    touch.clientX <= runButtonArea.right && 
-                                    touch.clientY >= runButtonArea.top && 
-                                    touch.clientY <= runButtonArea.bottom;
-            
-            if (!isInJoystickArea && !isInRunButtonArea) {
-                this.touchLook.active = true;
-                this.touchLook.lastX = touch.clientX;
-                this.touchLook.lastY = touch.clientY;
+            // Support multiple touches - joystick can work while camera moves
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
+                const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
+                
+                const isInJoystickArea = touch.clientX >= joystickArea.left && 
+                                       touch.clientX <= joystickArea.right && 
+                                       touch.clientY >= joystickArea.top && 
+                                       touch.clientY <= joystickArea.bottom;
+                
+                const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
+                                        touch.clientX <= runButtonArea.right && 
+                                        touch.clientY >= runButtonArea.top && 
+                                        touch.clientY <= runButtonArea.bottom;
+                
+                // If this touch is for camera (not in control areas)
+                if (!isInJoystickArea && !isInRunButtonArea) {
+                    this.touchLook.active = true;
+                    this.touchLook.lastX = touch.clientX;
+                    this.touchLook.lastY = touch.clientY;
+                    this.touchLook.identifier = touch.identifier;
+                    break;
+                }
             }
         });
         
         this.renderer.domElement.addEventListener('touchmove', (e) => {
             e.preventDefault();
+            
+            // Always allow camera movement if touch look is active
             if (this.touchLook.active) {
-                // Find the camera control touch (not joystick)
+                // Find the camera control touch by identifier
                 let cameraTouch = null;
                 for (let i = 0; i < e.touches.length; i++) {
-                    const touch = e.touches[i];
-                    const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
-                    const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
-                    
-                    const isInJoystickArea = touch.clientX >= joystickArea.left && 
-                                           touch.clientX <= joystickArea.right && 
-                                           touch.clientY >= joystickArea.top && 
-                                           touch.clientY <= joystickArea.bottom;
-                    
-                    const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
-                                            touch.clientX <= runButtonArea.right && 
-                                            touch.clientY >= runButtonArea.top && 
-                                            touch.clientY <= runButtonArea.bottom;
-                    
-                    if (!isInJoystickArea && !isInRunButtonArea) {
-                        cameraTouch = touch;
+                    if (e.touches[i].identifier === this.touchLook.identifier) {
+                        cameraTouch = e.touches[i];
                         break;
                     }
                 }
@@ -776,31 +813,18 @@ class TokyoDisasterSimulator {
         });
         
         this.renderer.domElement.addEventListener('touchend', (e) => {
-            // Only disable if no more touches outside control areas
-            let hasActiveCameraTouch = false;
+            // Check if the camera touch ended
+            let cameraEnded = true;
             for (let i = 0; i < e.touches.length; i++) {
-                const touch = e.touches[i];
-                const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
-                const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
-                
-                const isInJoystickArea = touch.clientX >= joystickArea.left && 
-                                       touch.clientX <= joystickArea.right && 
-                                       touch.clientY >= joystickArea.top && 
-                                       touch.clientY <= joystickArea.bottom;
-                
-                const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
-                                        touch.clientX <= runButtonArea.right && 
-                                        touch.clientY >= runButtonArea.top && 
-                                        touch.clientY <= runButtonArea.bottom;
-                
-                if (!isInJoystickArea && !isInRunButtonArea) {
-                    hasActiveCameraTouch = true;
+                if (e.touches[i].identifier === this.touchLook.identifier) {
+                    cameraEnded = false;
                     break;
                 }
             }
             
-            if (!hasActiveCameraTouch) {
+            if (cameraEnded) {
                 this.touchLook.active = false;
+                this.touchLook.identifier = null;
             }
         });
     }
@@ -897,14 +921,20 @@ class TokyoDisasterSimulator {
         this.gameState.levelStartTime = Date.now();
         this.updateLevelUI();
         
-        const countdown = setInterval(() => {
+        // Limpiar intervalo anterior si existe
+        if (this.gameState.countdownInterval) {
+            clearInterval(this.gameState.countdownInterval);
+        }
+        
+        this.gameState.countdownInterval = setInterval(() => {
             this.gameState.timeToEarthquake--;
             this.gameState.survivalTime = Math.floor((Date.now() - this.gameState.levelStartTime) / 1000);
             this.timerElement.textContent = this.gameState.timeToEarthquake;
             this.updateLevelUI();
             
             if (this.gameState.timeToEarthquake <= 0) {
-                clearInterval(countdown);
+                clearInterval(this.gameState.countdownInterval);
+                this.gameState.countdownInterval = null;
                 this.startLevelDisaster();
             }
         }, 1000);
@@ -1120,7 +1150,9 @@ class TokyoDisasterSimulator {
         
         if (this.gameState.currentLevel < this.gameState.maxLevel) {
             this.gameState.currentLevel++;
-            this.gameState.timeToEarthquake = 50 - (this.gameState.currentLevel * 5); // Cada nivel más difícil
+            // Tiempo ajustado para cada nivel
+            const levelTimes = [60, 50, 45, 40];
+            this.gameState.timeToEarthquake = levelTimes[this.gameState.currentLevel - 1] || 40;
             this.gameState.phase = 'exploration';
             this.gameState.levelStartTime = Date.now();
             this.gameState.survivalTime = 0;
@@ -1133,8 +1165,14 @@ class TokyoDisasterSimulator {
             this.meteors.forEach(meteor => this.scene.remove(meteor));
             this.meteors = [];
             
+            // Mostrar timer nuevamente
+            document.getElementById('timer').style.display = 'block';
+            
             this.showStatus(`¡Nivel ${this.gameState.currentLevel - 1} Completado! Preparándose para el Nivel ${this.gameState.currentLevel}...`);
-            this.startCountdown();
+            
+            setTimeout(() => {
+                this.startCountdown();
+            }, 3000);
         } else {
             this.showStatus('¡FELICIDADES! ¡Has sobrevivido a todas las plagas de Egipto!');
             this.gameState.isGameOver = true;
@@ -1279,10 +1317,10 @@ class TokyoDisasterSimulator {
         const playerPos = this.player.position;
         const isInRefuge = this.refuges.some(refuge => {
             const distance = playerPos.distanceTo(refuge.position);
-            return distance < 8;
+            return distance < 25; // Aumentado el rango para bunkers más grandes
         });
         
-        if (isInRefuge && this.gameState.phase === 'apocalypse') {
+        if (isInRefuge && (this.gameState.phase === 'nuclear_apocalypse' || this.gameState.phase === 'earthquake')) {
             this.player.health = Math.min(100, this.player.health + 0.5);
         }
         
