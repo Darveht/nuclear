@@ -1644,6 +1644,55 @@ class TokyoDisasterSimulator {
         this.timerElement = document.getElementById('countdown');
         this.healthElement = document.getElementById('health-value');
         this.statusElement = document.getElementById('status');
+        
+        // Configurar menú hamburguesa
+        this.setupHamburgerMenu();
+    }
+    
+    setupHamburgerMenu() {
+        const menuToggle = document.getElementById('menu-toggle');
+        const uiOverlay = document.getElementById('ui-overlay');
+        let isUIVisible = false;
+        
+        menuToggle.addEventListener('click', () => {
+            isUIVisible = !isUIVisible;
+            
+            if (isUIVisible) {
+                uiOverlay.classList.remove('ui-hidden');
+                menuToggle.classList.add('active');
+            } else {
+                uiOverlay.classList.add('ui-hidden');
+                menuToggle.classList.remove('active');
+            }
+        });
+        
+        // Atajo de teclado para mostrar/ocultar UI (tecla TAB)
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Tab') {
+                e.preventDefault();
+                menuToggle.click();
+            }
+        });
+        
+        // Auto-mostrar UI durante eventos importantes
+        this.autoShowUI = (force = false) => {
+            if (force || this.gameState.phase !== 'exploration') {
+                if (!isUIVisible) {
+                    menuToggle.click();
+                }
+            }
+        };
+        
+        // Auto-ocultar UI después de unos segundos en exploración
+        this.autoHideUI = () => {
+            if (this.gameState.phase === 'exploration' && isUIVisible) {
+                setTimeout(() => {
+                    if (this.gameState.phase === 'exploration' && isUIVisible) {
+                        menuToggle.click();
+                    }
+                }, 5000);
+            }
+        };
     }
     
     startCountdown() {
@@ -1714,6 +1763,9 @@ class TokyoDisasterSimulator {
     startEarthquake() {
         this.gameState.phase = 'pre_earthquake';
         document.getElementById('timer').style.display = 'none';
+        
+        // Auto-mostrar UI durante el evento
+        if (this.autoShowUI) this.autoShowUI(true);
         
         // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
         this.playDisasterMusic();
@@ -1811,6 +1863,10 @@ class TokyoDisasterSimulator {
     
     startMeteorRain() {
         this.gameState.phase = 'meteor_rain';
+        
+        // Auto-mostrar UI durante el evento
+        if (this.autoShowUI) this.autoShowUI(true);
+        
         this.showStatus('¡LLUVIA DE METEORITOS! ¡Esquívalos!');
         
         // Instrucción de voz inicial
@@ -1848,6 +1904,10 @@ class TokyoDisasterSimulator {
     
     startHailstorm() {
         this.gameState.phase = 'hailstorm';
+        
+        // Auto-mostrar UI durante el evento
+        if (this.autoShowUI) this.autoShowUI(true);
+        
         this.showStatus('¡GRANIZO MORTAL! ¡Busca refugio!');
         
         // Instrucción de voz inicial
@@ -1953,6 +2013,9 @@ class TokyoDisasterSimulator {
             this.gameState.survivalTime = 0;
             this.gameState.earthquakeIntensity = 0; // Resetear intensidad del terremoto
             
+            // Auto-ocultar UI en modo exploración después de unos segundos
+            if (this.autoHideUI) this.autoHideUI();
+            
             // Restaurar cielo
             this.renderer.setClearColor(0xFDB813);
             this.scene.fog.color.setHex(0xFDB813);
@@ -2009,6 +2072,10 @@ class TokyoDisasterSimulator {
     
     startNuclearApocalypse() {
         this.gameState.phase = 'nuclear_apocalypse';
+        
+        // Auto-mostrar UI durante el evento
+        if (this.autoShowUI) this.autoShowUI(true);
+        
         this.showStatus('¡RADIACIÓN NUCLEAR! ¡CORRE AL BUNKER!');
         
         // Instrucción de voz inicial urgente

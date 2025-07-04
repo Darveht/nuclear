@@ -10,7 +10,15 @@
 </head>
 <body>
     <div id="game-container">
-        <div id="ui-overlay">
+        <!-- Menú hamburguesa -->
+        <div id="menu-toggle">
+            <div class="hamburger-line"></div>
+            <div class="hamburger-line"></div>
+            <div class="hamburger-line"></div>
+        </div>
+        
+        <!-- Panel de controles (ahora oculto por defecto) -->
+        <div id="ui-overlay" class="ui-hidden">
             <div id="timer">Desastre en: <span id="countdown">60</span>s</div>
             <div id="health">Salud: <span id="health-value">100</span>%</div>
             <div id="instructions" class="desktop-only">
