@@ -2256,28 +2256,8 @@ class TokyoDisasterSimulator {
         // Calcular nueva posición
         const newPosition = this.player.position.clone().add(direction);
         
-        // Verificar colisiones con edificios (excepto mansión que permite entrada)
-        const playerBoundingBox = new THREE.Box3(
-            new THREE.Vector3(newPosition.x - 1, newPosition.y - 1, newPosition.z - 1),
-            new THREE.Vector3(newPosition.x + 1, newPosition.y + 1, newPosition.z + 1)
-        );
-        
-        let canMove = true;
-        this.buildings.forEach(building => {
-            if (!building.userData.isDestroyed) {
-                building.userData.boundingBox.setFromObject(building);
-                if (playerBoundingBox.intersectsBox(building.userData.boundingBox)) {
-                    // Permitir entrada solo a la mansión
-                    if (!building.userData.isMansion || !building.userData.allowEntry) {
-                        canMove = false;
-                    }
-                }
-            }
-        });
-        
-        if (canMove) {
-            this.player.position.copy(newPosition);
-        }
+        // Permitir atravesar todas las paredes y estructuras - Sin colisiones
+        this.player.position.copy(newPosition);
         
         // Limitar movimiento
         this.player.position.x = Math.max(-240, Math.min(240, this.player.position.x));
