@@ -1054,7 +1054,11 @@ class TokyoDisasterSimulator {
         
         this.meteorInterval = setInterval(() => {
             this.createMeteor();
-        }, 800);
+            // Crear meteoros adicionales para mayor intensidad
+            if (Math.random() > 0.3) {
+                setTimeout(() => this.createMeteor(), 200);
+            }
+        }, 600);
         
         // Completar nivel después de 60 segundos
         setTimeout(() => this.completeLevel(), 60000);
@@ -1214,30 +1218,92 @@ class TokyoDisasterSimulator {
     }
     
     createMeteor() {
-        const meteorGeometry = new THREE.SphereGeometry(2, 8, 8);
-        const meteorMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xff4400
-        });
-        const meteor = new THREE.Mesh(meteorGeometry, meteorMaterial);
+        // Crear grupo para el meteorito completo
+        const meteorGroup = new THREE.Group();
         
-        // Posición aleatoria en el cielo
-        meteor.position.set(
-            (Math.random() - 0.5) * 400,
-            100 + Math.random() * 50,
-            (Math.random() - 0.5) * 400
+        // Núcleo del meteorito (más grande y brillante)
+        const meteorGeometry = new THREE.SphereGeometry(4, 12, 12);
+        const meteorMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff6600,
+            emissive: 0xff2200 // Error corregido: usar MeshLambertMaterial
+        });
+        const meteorCore = new THREE.Mesh(meteorGeometry, meteorMaterial);
+        
+        // Usar MeshLambertMaterial en su lugar
+        const meteorCorrectedMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0xff6600
+        });
+        meteorCore.material = meteorCorrectedMaterial;
+        
+        // Aura brillante alrededor del meteorito
+        const auraGeometry = new THREE.SphereGeometry(6, 12, 12);
+        const auraMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff8800,
+            transparent: true,
+            opacity: 0.3
+        });
+        const aura = new THREE.Mesh(auraGeometry, auraMaterial);
+        
+        // Cola de fuego del meteorito
+        const tailGeometry = new THREE.ConeGeometry(2, 15, 8);
+        const tailMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff0000,
+            transparent: true,
+            opacity: 0.7
+        });
+        const tail = new THREE.Mesh(tailGeometry, tailMaterial);
+        tail.position.set(0, 8, 0); // Posicionar la cola detrás
+        tail.rotation.x = Math.PI; // Rotar para que apunte hacia atrás
+        
+        // Partículas de chispas
+        const sparklesGroup = new THREE.Group();
+        for (let i = 0; i < 15; i++) {
+            const sparkGeometry = new THREE.SphereGeometry(0.3, 4, 4);
+            const sparkMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0xffaa00
+            });
+            const spark = new THREE.Mesh(sparkGeometry, sparkMaterial);
+            spark.position.set(
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 8,
+                (Math.random() - 0.5) * 8
+            );
+            sparklesGroup.add(spark);
+        }
+        
+        // Luz del meteorito
+        const meteorLight = new THREE.PointLight(0xff4400, 3, 50);
+        meteorLight.position.set(0, 0, 0);
+        
+        // Ensamblar el meteorito
+        meteorGroup.add(meteorCore);
+        meteorGroup.add(aura);
+        meteorGroup.add(tail);
+        meteorGroup.add(sparklesGroup);
+        meteorGroup.add(meteorLight);
+        
+        // Posición aleatoria en el cielo (más alto para ser más visible)
+        meteorGroup.position.set(
+            (Math.random() - 0.5) * 600,
+            150 + Math.random() * 100,
+            (Math.random() - 0.5) * 600
         );
         
-        meteor.userData = {
+        meteorGroup.userData = {
             velocity: new THREE.Vector3(
-                (Math.random() - 0.5) * 2,
-                -20 - Math.random() * 10,
-                (Math.random() - 0.5) * 2
+                (Math.random() - 0.5) * 3,
+                -15 - Math.random() * 10,
+                (Math.random() - 0.5) * 3
             ),
-            damage: 25
+            damage: 25,
+            sparkles: sparklesGroup,
+            tail: tail,
+            aura: aura,
+            light: meteorLight
         };
         
-        this.meteors.push(meteor);
-        this.scene.add(meteor);
+        this.meteors.push(meteorGroup);
+        this.scene.add(meteorGroup);
     }
     
     startPyramidDestruction() {
@@ -1353,8 +1419,31 @@ class TokyoDisasterSimulator {
                     this.updateHealthUI();
                 }
             } else {
-                // Meteoros y granizo normales
+                // Meteoros y granizo normales - mejorar visibilidad
                 meteor.position.add(meteor.userData.velocity);
+                
+                // Animar efectos del meteorito durante el vuelo
+                if (meteor.userData.sparkles) {
+                    // Rotar chispas
+                    meteor.userData.sparkles.rotation.y += 0.2;
+                    meteor.userData.sparkles.children.forEach(spark => {
+                        spark.position.add(new THREE.Vector3(
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5,
+                            (Math.random() - 0.5) * 0.5
+                        ));
+                    });
+                }
+                
+                // Animar cola de fuego
+                if (meteor.userData.tail) {
+                    meteor.userData.tail.scale.y = 1 + Math.sin(Date.now() * 0.01) * 0.3;
+                }
+                
+                // Pulsar aura
+                if (meteor.userData.aura) {
+                    meteor.userData.aura.material.opacity = 0.3 + Math.sin(Date.now() * 0.005) * 0.2;
+                }
                 
                 // Verificar colisión con el suelo
                 if (meteor.position.y <= 2) {
@@ -1362,47 +1451,199 @@ class TokyoDisasterSimulator {
                     
                     // Verificar colisión con jugador
                     const distance = meteor.position.distanceTo(this.player.position);
-                    if (distance < 10 && !this.checkRefugeSafety()) {
+                    if (distance < 15 && !this.checkRefugeSafety()) {
                         this.player.health -= meteor.userData.damage || 25;
                         this.updateHealthUI();
+                        
+                        // Efecto de pantalla roja si recibe daño
+                        this.createDamageFlash();
                     }
+                    
+                    // Crear efecto de explosión ANTES de remover
+                    this.createExplosionEffect(meteor.position.clone());
                     
                     // Remover meteoro
                     this.scene.remove(meteor);
                     this.meteors.splice(index, 1);
-                    
-                    // Crear efecto de explosión
-                    this.createExplosionEffect(meteor.position);
                 }
             }
         });
     }
     
+    createDamageFlash() {
+        // Efecto visual cuando el jugador recibe daño
+        const flash = document.createElement('div');
+        flash.style.position = 'fixed';
+        flash.style.top = '0';
+        flash.style.left = '0';
+        flash.style.width = '100%';
+        flash.style.height = '100%';
+        flash.style.backgroundColor = 'rgba(255, 0, 0, 0.3)';
+        flash.style.pointerEvents = 'none';
+        flash.style.zIndex = '9999';
+        document.body.appendChild(flash);
+        
+        setTimeout(() => {
+            document.body.removeChild(flash);
+        }, 200);
+    }
+    
     createExplosionEffect(position) {
-        const explosionGeometry = new THREE.SphereGeometry(5, 8, 8);
-        const explosionMaterial = new THREE.MeshBasicMaterial({ 
+        // Grupo de explosión principal
+        const explosionGroup = new THREE.Group();
+        explosionGroup.position.copy(position);
+        
+        // Bola de fuego principal (más grande)
+        const fireballGeometry = new THREE.SphereGeometry(8, 16, 16);
+        const fireballMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0xff4400,
+            transparent: true,
+            opacity: 0.9
+        });
+        const fireball = new THREE.Mesh(fireballGeometry, fireballMaterial);
+        
+        // Anillo de expansión
+        const ringGeometry = new THREE.RingGeometry(5, 15, 16);
+        const ringMaterial = new THREE.MeshBasicMaterial({ 
             color: 0xff8800,
             transparent: true,
-            opacity: 0.8
+            opacity: 0.6,
+            side: THREE.DoubleSide
         });
-        const explosion = new THREE.Mesh(explosionGeometry, explosionMaterial);
-        explosion.position.copy(position);
-        this.scene.add(explosion);
+        const ring = new THREE.Mesh(ringGeometry, ringMaterial);
+        ring.rotation.x = -Math.PI / 2;
         
-        // Animar y remover
-        let scale = 1;
+        // Columna de humo
+        const smokeGeometry = new THREE.CylinderGeometry(3, 8, 20, 8);
+        const smokeMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x444444,
+            transparent: true,
+            opacity: 0.7
+        });
+        const smoke = new THREE.Mesh(smokeGeometry, smokeMaterial);
+        smoke.position.y = 10;
+        
+        // Partículas de escombros
+        const debrisGroup = new THREE.Group();
+        for (let i = 0; i < 20; i++) {
+            const debrisGeometry = new THREE.BoxGeometry(
+                Math.random() * 2 + 0.5,
+                Math.random() * 2 + 0.5,
+                Math.random() * 2 + 0.5
+            );
+            const debrisMaterial = new THREE.MeshBasicMaterial({ 
+                color: 0x8B4513
+            });
+            const debris = new THREE.Mesh(debrisGeometry, debrisMaterial);
+            debris.position.set(
+                (Math.random() - 0.5) * 10,
+                Math.random() * 5,
+                (Math.random() - 0.5) * 10
+            );
+            debris.userData = {
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 8,
+                    Math.random() * 6 + 2,
+                    (Math.random() - 0.5) * 8
+                )
+            };
+            debrisGroup.add(debris);
+        }
+        
+        // Luz de explosión intensa
+        const explosionLight = new THREE.PointLight(0xff4400, 5, 100);
+        explosionLight.position.set(0, 5, 0);
+        
+        // Ensamblar explosión
+        explosionGroup.add(fireball);
+        explosionGroup.add(ring);
+        explosionGroup.add(smoke);
+        explosionGroup.add(debrisGroup);
+        explosionGroup.add(explosionLight);
+        
+        this.scene.add(explosionGroup);
+        
+        // Crear cráter en el suelo
+        this.createCrater(position);
+        
+        // Animar explosión
+        let scale = 0.1;
+        let time = 0;
         const animate = () => {
-            scale += 0.1;
-            explosion.scale.setScalar(scale);
-            explosion.material.opacity -= 0.05;
+            time += 0.05;
+            scale += 0.15;
             
-            if (explosion.material.opacity <= 0) {
-                this.scene.remove(explosion);
-            } else {
+            // Animar bola de fuego
+            fireball.scale.setScalar(scale);
+            fireball.material.opacity = Math.max(0, 1 - time);
+            
+            // Animar anillo
+            ring.scale.setScalar(scale * 1.5);
+            ring.material.opacity = Math.max(0, 0.6 - time);
+            
+            // Animar humo
+            smoke.scale.setScalar(1 + time * 0.5);
+            smoke.position.y = 10 + time * 5;
+            smoke.material.opacity = Math.max(0, 0.7 - time);
+            
+            // Animar escombros
+            debrisGroup.children.forEach(debris => {
+                debris.position.add(debris.userData.velocity.clone().multiplyScalar(0.1));
+                debris.userData.velocity.y -= 0.2; // Gravedad
+                debris.rotation.x += 0.1;
+                debris.rotation.y += 0.1;
+                debris.rotation.z += 0.1;
+            });
+            
+            // Reducir intensidad de luz
+            explosionLight.intensity = Math.max(0, 5 - time * 3);
+            
+            if (time < 2) {
                 requestAnimationFrame(animate);
+            } else {
+                this.scene.remove(explosionGroup);
             }
         };
         animate();
+    }
+    
+    createCrater(position) {
+        // Crear cráter visible en el suelo
+        const craterGeometry = new THREE.RingGeometry(2, 12, 16);
+        const craterMaterial = new THREE.MeshBasicMaterial({ 
+            color: 0x222222,
+            side: THREE.DoubleSide
+        });
+        const crater = new THREE.Mesh(craterGeometry, craterMaterial);
+        crater.position.set(position.x, 0.1, position.z);
+        crater.rotation.x = -Math.PI / 2;
+        this.scene.add(crater);
+        
+        // Agregar rocas alrededor del cráter
+        for (let i = 0; i < 8; i++) {
+            const rockGeometry = new THREE.DodecahedronGeometry(
+                Math.random() * 2 + 1
+            );
+            const rockMaterial = new THREE.MeshLambertMaterial({ 
+                color: 0x8B4513
+            });
+            const rock = new THREE.Mesh(rockGeometry, rockMaterial);
+            
+            const angle = (i / 8) * Math.PI * 2;
+            const radius = 8 + Math.random() * 5;
+            rock.position.set(
+                position.x + Math.cos(angle) * radius,
+                1,
+                position.z + Math.sin(angle) * radius
+            );
+            rock.rotation.set(
+                Math.random() * Math.PI,
+                Math.random() * Math.PI,
+                Math.random() * Math.PI
+            );
+            
+            this.scene.add(rock);
+        }
     }
     
     updateBuildings() {
