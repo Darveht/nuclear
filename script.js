@@ -1,4 +1,3 @@
-
 // Simulador 3D - Terremoto en Tokio
 class TokyoDisasterSimulator {
     constructor() {
@@ -43,10 +42,15 @@ class TokyoDisasterSimulator {
         
         this.gameState = {
             phase: 'exploration', // exploration, pre_earthquake, earthquake, nuclear_apocalypse
-            timeToEarthquake: 60, // Más tiempo para prepararse
+            timeToEarthquake: 50, // Nivel 1: 50 segundos
             earthquakeIntensity: 0,
             earthquakePhase: 0, // 0: calm, 1: tremors, 2: moderate, 3: strong, 4: devastating
-            isGameOver: false
+            isGameOver: false,
+            currentLevel: 1,
+            maxLevel: 4,
+            levelComplete: false,
+            survivalTime: 0,
+            levelStartTime: 0
         };
         
         this.sounds = {
@@ -268,15 +272,22 @@ class TokyoDisasterSimulator {
     
     createPyramid(size) {
         const geometry = new THREE.ConeGeometry(size.base, size.height, 4);
-        const material = new THREE.MeshLambertMaterial({ color: size.color });
+        
+        // Crear textura de pirámide más realista
+        const pyramidTexture = this.createPyramidTexture();
+        const material = new THREE.MeshLambertMaterial({ 
+            color: size.color,
+            map: pyramidTexture
+        });
+        
         const pyramid = new THREE.Mesh(geometry, material);
         pyramid.castShadow = true;
         pyramid.receiveShadow = true;
-        pyramid.rotation.y = Math.PI / 4; // Rotar 45 grados para que sea cuadrada
+        pyramid.rotation.y = Math.PI / 4;
         
-        // Crear bloques de piedra para cuando se destruya
+        // Crear bloques de piedra para destrucción
         const debrisGroup = new THREE.Group();
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 25; i++) {
             const debrisGeometry = new THREE.BoxGeometry(
                 Math.random() * 4 + 2,
                 Math.random() * 3 + 1,
@@ -304,24 +315,38 @@ class TokyoDisasterSimulator {
             debrisGroup.add(debris);
         }
         
-        // Añadir jeroglíficos simulados
-        const hieroglyphGeometry = new THREE.PlaneGeometry(3, 3);
+        // Añadir jeroglíficos más detallados
+        const hieroglyphGeometry = new THREE.PlaneGeometry(5, 5);
+        const hieroglyphTexture = this.createHieroglyphTexture();
         const hieroglyphMaterial = new THREE.MeshBasicMaterial({ 
-            color: 0x8B4513
+            map: hieroglyphTexture,
+            transparent: true
         });
         
-        for (let i = 0; i < 8; i++) {
+        for (let i = 0; i < 4; i++) {
             const hieroglyph = new THREE.Mesh(hieroglyphGeometry, hieroglyphMaterial);
-            const angle = (i / 8) * Math.PI * 2;
-            const radius = size.base * 0.7;
+            const angle = (i / 4) * Math.PI * 2;
+            const radius = size.base * 0.8;
             hieroglyph.position.set(
                 Math.cos(angle) * radius,
-                size.height * 0.3,
+                size.height * 0.4,
                 Math.sin(angle) * radius
             );
-            hieroglyph.lookAt(0, size.height * 0.3, 0);
+            hieroglyph.lookAt(
+                hieroglyph.position.x * 2,
+                size.height * 0.4,
+                hieroglyph.position.z * 2
+            );
             pyramid.add(hieroglyph);
         }
+        
+        // Añadir base de piedra
+        const baseGeometry = new THREE.CylinderGeometry(size.base * 1.1, size.base * 1.1, 3, 4);
+        const baseMaterial = new THREE.MeshLambertMaterial({ color: 0xA0522D });
+        const base = new THREE.Mesh(baseGeometry, baseMaterial);
+        base.position.y = -size.height / 2 - 1.5;
+        base.rotation.y = Math.PI / 4;
+        pyramid.add(base);
         
         pyramid.userData = { 
             originalPosition: pyramid.position.clone(),
@@ -335,6 +360,80 @@ class TokyoDisasterSimulator {
         };
         
         return pyramid;
+    }
+    
+    createPyramidTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        
+        // Fondo de piedra arenisca
+        context.fillStyle = '#D2B48C';
+        context.fillRect(0, 0, 512, 512);
+        
+        // Agregar líneas de bloques de piedra
+        context.strokeStyle = '#A0522D';
+        context.lineWidth = 2;
+        
+        for (let y = 0; y < 512; y += 40) {
+            context.beginPath();
+            context.moveTo(0, y);
+            context.lineTo(512, y);
+            context.stroke();
+        }
+        
+        for (let x = 0; x < 512; x += 60) {
+            context.beginPath();
+            context.moveTo(x, 0);
+            context.lineTo(x, 512);
+            context.stroke();
+        }
+        
+        // Agregar desgaste y sombras
+        context.fillStyle = 'rgba(139, 69, 19, 0.3)';
+        for (let i = 0; i < 50; i++) {
+            const x = Math.random() * 512;
+            const y = Math.random() * 512;
+            const size = Math.random() * 20 + 5;
+            context.fillRect(x, y, size, size);
+        }
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        texture.wrapS = THREE.RepeatWrapping;
+        texture.wrapT = THREE.RepeatWrapping;
+        texture.repeat.set(2, 2);
+        return texture;
+    }
+    
+    createHieroglyphTexture() {
+        const canvas = document.createElement('canvas');
+        canvas.width = 256;
+        canvas.height = 256;
+        const context = canvas.getContext('2d');
+        
+        // Fondo transparente
+        context.clearRect(0, 0, 256, 256);
+        
+        // Dibujar jeroglíficos estilizados
+        context.fillStyle = '#8B4513';
+        context.font = 'bold 40px Arial';
+        context.textAlign = 'center';
+        
+        const hieroglyphs = ['𓀀', '𓁹', '𓃭', '𓄿', '𓅓', '𓆑'];
+        const selectedHieroglyph = hieroglyphs[Math.floor(Math.random() * hieroglyphs.length)];
+        
+        context.fillText(selectedHieroglyph, 128, 80);
+        context.fillText('𓈖', 128, 140);
+        context.fillText('𓊪', 128, 200);
+        
+        // Agregar marco decorativo
+        context.strokeStyle = '#8B4513';
+        context.lineWidth = 4;
+        context.strokeRect(20, 20, 216, 216);
+        
+        const texture = new THREE.CanvasTexture(canvas);
+        return texture;
     }
     
     createOasis() {
@@ -612,32 +711,97 @@ class TokyoDisasterSimulator {
             runButton.style.transform = 'scale(1)';
         });
         
-        // Touch look controls (for camera)
+        // Touch look controls (for camera) - improved multi-touch support
         this.renderer.domElement.addEventListener('touchstart', (e) => {
-            if (e.touches.length === 1) {
+            // Check if this is a camera control touch (not joystick)
+            const touch = e.touches[0];
+            const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
+            const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
+            
+            const isInJoystickArea = touch.clientX >= joystickArea.left && 
+                                   touch.clientX <= joystickArea.right && 
+                                   touch.clientY >= joystickArea.top && 
+                                   touch.clientY <= joystickArea.bottom;
+            
+            const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
+                                    touch.clientX <= runButtonArea.right && 
+                                    touch.clientY >= runButtonArea.top && 
+                                    touch.clientY <= runButtonArea.bottom;
+            
+            if (!isInJoystickArea && !isInRunButtonArea) {
                 this.touchLook.active = true;
-                this.touchLook.lastX = e.touches[0].clientX;
-                this.touchLook.lastY = e.touches[0].clientY;
+                this.touchLook.lastX = touch.clientX;
+                this.touchLook.lastY = touch.clientY;
             }
         });
         
         this.renderer.domElement.addEventListener('touchmove', (e) => {
             e.preventDefault();
-            if (this.touchLook.active && e.touches.length === 1) {
-                const deltaX = e.touches[0].clientX - this.touchLook.lastX;
-                const deltaY = e.touches[0].clientY - this.touchLook.lastY;
+            if (this.touchLook.active) {
+                // Find the camera control touch (not joystick)
+                let cameraTouch = null;
+                for (let i = 0; i < e.touches.length; i++) {
+                    const touch = e.touches[i];
+                    const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
+                    const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
+                    
+                    const isInJoystickArea = touch.clientX >= joystickArea.left && 
+                                           touch.clientX <= joystickArea.right && 
+                                           touch.clientY >= joystickArea.top && 
+                                           touch.clientY <= joystickArea.bottom;
+                    
+                    const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
+                                            touch.clientX <= runButtonArea.right && 
+                                            touch.clientY >= runButtonArea.top && 
+                                            touch.clientY <= runButtonArea.bottom;
+                    
+                    if (!isInJoystickArea && !isInRunButtonArea) {
+                        cameraTouch = touch;
+                        break;
+                    }
+                }
                 
-                this.mouse.x -= deltaX * 0.003; // Invertir y ajustar sensibilidad horizontal
-                this.mouse.y -= deltaY * 0.003; // Invertir y ajustar sensibilidad vertical
-                this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouse.y));
-                
-                this.touchLook.lastX = e.touches[0].clientX;
-                this.touchLook.lastY = e.touches[0].clientY;
+                if (cameraTouch) {
+                    const deltaX = cameraTouch.clientX - this.touchLook.lastX;
+                    const deltaY = cameraTouch.clientY - this.touchLook.lastY;
+                    
+                    this.mouse.x -= deltaX * 0.003;
+                    this.mouse.y -= deltaY * 0.003;
+                    this.mouse.y = Math.max(-Math.PI/2, Math.min(Math.PI/2, this.mouse.y));
+                    
+                    this.touchLook.lastX = cameraTouch.clientX;
+                    this.touchLook.lastY = cameraTouch.clientY;
+                }
             }
         });
         
         this.renderer.domElement.addEventListener('touchend', (e) => {
-            this.touchLook.active = false;
+            // Only disable if no more touches outside control areas
+            let hasActiveCameraTouch = false;
+            for (let i = 0; i < e.touches.length; i++) {
+                const touch = e.touches[i];
+                const joystickArea = document.getElementById('joystick-container').getBoundingClientRect();
+                const runButtonArea = document.getElementById('run-button').getBoundingClientRect();
+                
+                const isInJoystickArea = touch.clientX >= joystickArea.left && 
+                                       touch.clientX <= joystickArea.right && 
+                                       touch.clientY >= joystickArea.top && 
+                                       touch.clientY <= joystickArea.bottom;
+                
+                const isInRunButtonArea = touch.clientX >= runButtonArea.left && 
+                                        touch.clientX <= runButtonArea.right && 
+                                        touch.clientY >= runButtonArea.top && 
+                                        touch.clientY <= runButtonArea.bottom;
+                
+                if (!isInJoystickArea && !isInRunButtonArea) {
+                    hasActiveCameraTouch = true;
+                    break;
+                }
+            }
+            
+            if (!hasActiveCameraTouch) {
+                this.touchLook.active = false;
+            }
         });
     }
     
@@ -730,15 +894,62 @@ class TokyoDisasterSimulator {
     }
     
     startCountdown() {
+        this.gameState.levelStartTime = Date.now();
+        this.updateLevelUI();
+        
         const countdown = setInterval(() => {
             this.gameState.timeToEarthquake--;
+            this.gameState.survivalTime = Math.floor((Date.now() - this.gameState.levelStartTime) / 1000);
             this.timerElement.textContent = this.gameState.timeToEarthquake;
+            this.updateLevelUI();
             
             if (this.gameState.timeToEarthquake <= 0) {
                 clearInterval(countdown);
-                this.startEarthquake();
+                this.startLevelDisaster();
             }
         }, 1000);
+    }
+    
+    updateLevelUI() {
+        const levelInfo = document.getElementById('level-info');
+        if (!levelInfo) {
+            const uiOverlay = document.getElementById('ui-overlay');
+            const levelDiv = document.createElement('div');
+            levelDiv.id = 'level-info';
+            levelDiv.style.background = 'rgba(0, 100, 200, 0.8)';
+            levelDiv.style.padding = '10px 15px';
+            levelDiv.style.borderRadius = '5px';
+            levelDiv.style.marginBottom = '10px';
+            levelDiv.style.fontWeight = 'bold';
+            uiOverlay.insertBefore(levelDiv, uiOverlay.firstChild);
+        }
+        
+        const levelNames = {
+            1: 'Terremoto',
+            2: 'Lluvia de Meteoritos',
+            3: 'Granizo Mortal',
+            4: 'Plaga de Langostas'
+        };
+        
+        document.getElementById('level-info').innerHTML = 
+            `Nivel ${this.gameState.currentLevel}: ${levelNames[this.gameState.currentLevel]} | Tiempo: ${this.gameState.survivalTime}s`;
+    }
+    
+    startLevelDisaster() {
+        switch(this.gameState.currentLevel) {
+            case 1:
+                this.startEarthquake();
+                break;
+            case 2:
+                this.startMeteorRain();
+                break;
+            case 3:
+                this.startHailstorm();
+                break;
+            case 4:
+                this.startLocustPlague();
+                break;
+        }
     }
     
     startEarthquake() {
@@ -800,6 +1011,142 @@ class TokyoDisasterSimulator {
         };
         
         progressEarthquake();
+    }
+    
+    startMeteorRain() {
+        this.gameState.phase = 'meteor_rain';
+        this.showStatus('¡LLUVIA DE METEORITOS! ¡Esquívalos!');
+        
+        this.renderer.setClearColor(0x4B0000);
+        this.scene.fog.color.setHex(0xFF6600);
+        
+        this.meteorInterval = setInterval(() => {
+            this.createMeteor();
+        }, 800);
+        
+        // Completar nivel después de 60 segundos
+        setTimeout(() => this.completeLevel(), 60000);
+    }
+    
+    startHailstorm() {
+        this.gameState.phase = 'hailstorm';
+        this.showStatus('¡GRANIZO MORTAL! ¡Busca refugio!');
+        
+        this.renderer.setClearColor(0x2F4F4F);
+        this.scene.fog.color.setHex(0x708090);
+        
+        this.hailInterval = setInterval(() => {
+            this.createHailstone();
+        }, 300);
+        
+        setTimeout(() => this.completeLevel(), 45000);
+    }
+    
+    startLocustPlague() {
+        this.gameState.phase = 'locust_plague';
+        this.showStatus('¡PLAGA DE LANGOSTAS! ¡Sobrevive!');
+        
+        this.renderer.setClearColor(0x2F2F00);
+        this.scene.fog.color.setHex(0x8B8000);
+        
+        this.createLocustSwarm();
+        
+        this.locustDamageInterval = setInterval(() => {
+            if (!this.checkRefugeSafety()) {
+                this.player.health -= 1;
+                this.updateHealthUI();
+            }
+        }, 2000);
+        
+        setTimeout(() => this.completeLevel(), 40000);
+    }
+    
+    createHailstone() {
+        const hailGeometry = new THREE.SphereGeometry(1.5, 6, 6);
+        const hailMaterial = new THREE.MeshLambertMaterial({ 
+            color: 0xE0FFFF,
+            transparent: true,
+            opacity: 0.8
+        });
+        const hailstone = new THREE.Mesh(hailGeometry, hailMaterial);
+        
+        hailstone.position.set(
+            (Math.random() - 0.5) * 400,
+            100 + Math.random() * 50,
+            (Math.random() - 0.5) * 400
+        );
+        
+        hailstone.userData = {
+            velocity: new THREE.Vector3(
+                (Math.random() - 0.5) * 1,
+                -25 - Math.random() * 15,
+                (Math.random() - 0.5) * 1
+            ),
+            damage: 15
+        };
+        
+        this.meteors.push(hailstone);
+        this.scene.add(hailstone);
+    }
+    
+    createLocustSwarm() {
+        for (let i = 0; i < 50; i++) {
+            const locustGeometry = new THREE.SphereGeometry(0.3, 4, 4);
+            const locustMaterial = new THREE.MeshBasicMaterial({ color: 0x8B8000 });
+            const locust = new THREE.Mesh(locustGeometry, locustMaterial);
+            
+            locust.position.set(
+                (Math.random() - 0.5) * 200,
+                5 + Math.random() * 15,
+                (Math.random() - 0.5) * 200
+            );
+            
+            locust.userData = {
+                velocity: new THREE.Vector3(
+                    (Math.random() - 0.5) * 2,
+                    (Math.random() - 0.5) * 1,
+                    (Math.random() - 0.5) * 2
+                ),
+                isLocust: true
+            };
+            
+            this.meteors.push(locust);
+            this.scene.add(locust);
+        }
+    }
+    
+    completeLevel() {
+        this.clearAllIntervals();
+        
+        if (this.gameState.currentLevel < this.gameState.maxLevel) {
+            this.gameState.currentLevel++;
+            this.gameState.timeToEarthquake = 50 - (this.gameState.currentLevel * 5); // Cada nivel más difícil
+            this.gameState.phase = 'exploration';
+            this.gameState.levelStartTime = Date.now();
+            this.gameState.survivalTime = 0;
+            
+            // Restaurar cielo
+            this.renderer.setClearColor(0xFDB813);
+            this.scene.fog.color.setHex(0xFDB813);
+            
+            // Limpiar meteoros y efectos
+            this.meteors.forEach(meteor => this.scene.remove(meteor));
+            this.meteors = [];
+            
+            this.showStatus(`¡Nivel ${this.gameState.currentLevel - 1} Completado! Preparándose para el Nivel ${this.gameState.currentLevel}...`);
+            this.startCountdown();
+        } else {
+            this.showStatus('¡FELICIDADES! ¡Has sobrevivido a todas las plagas de Egipto!');
+            this.gameState.isGameOver = true;
+        }
+    }
+    
+    clearAllIntervals() {
+        if (this.sirenInterval) clearInterval(this.sirenInterval);
+        if (this.meteorInterval) clearInterval(this.meteorInterval);
+        if (this.hailInterval) clearInterval(this.hailInterval);
+        if (this.locustDamageInterval) clearInterval(this.locustDamageInterval);
+        if (this.radiationInterval) clearInterval(this.radiationInterval);
     }
     
     startNuclearApocalypse() {
@@ -944,25 +1291,50 @@ class TokyoDisasterSimulator {
     
     updateMeteors() {
         this.meteors.forEach((meteor, index) => {
-            meteor.position.add(meteor.userData.velocity);
-            
-            // Verificar colisión con el suelo
-            if (meteor.position.y <= 2) {
-                this.playExplosionSound();
+            if (meteor.userData.isLocust) {
+                // Movimiento de langostas (revoloteando)
+                meteor.userData.velocity.x += (Math.random() - 0.5) * 0.1;
+                meteor.userData.velocity.z += (Math.random() - 0.5) * 0.1;
+                meteor.userData.velocity.y += (Math.random() - 0.5) * 0.05;
+                
+                // Perseguir al jugador ligeramente
+                const direction = this.player.position.clone().sub(meteor.position).normalize();
+                meteor.userData.velocity.add(direction.multiplyScalar(0.02));
+                
+                meteor.position.add(meteor.userData.velocity);
+                
+                // Límites de altura para langostas
+                if (meteor.position.y < 2) meteor.position.y = 2;
+                if (meteor.position.y > 20) meteor.position.y = 20;
                 
                 // Verificar colisión con jugador
                 const distance = meteor.position.distanceTo(this.player.position);
-                if (distance < 10 && !this.checkRefugeSafety()) {
-                    this.player.health -= meteor.userData.damage;
+                if (distance < 3 && !this.checkRefugeSafety()) {
+                    this.player.health -= 0.5;
                     this.updateHealthUI();
                 }
+            } else {
+                // Meteoros y granizo normales
+                meteor.position.add(meteor.userData.velocity);
                 
-                // Remover meteoro
-                this.scene.remove(meteor);
-                this.meteors.splice(index, 1);
-                
-                // Crear efecto de explosión
-                this.createExplosionEffect(meteor.position);
+                // Verificar colisión con el suelo
+                if (meteor.position.y <= 2) {
+                    this.playExplosionSound();
+                    
+                    // Verificar colisión con jugador
+                    const distance = meteor.position.distanceTo(this.player.position);
+                    if (distance < 10 && !this.checkRefugeSafety()) {
+                        this.player.health -= meteor.userData.damage || 25;
+                        this.updateHealthUI();
+                    }
+                    
+                    // Remover meteoro
+                    this.scene.remove(meteor);
+                    this.meteors.splice(index, 1);
+                    
+                    // Crear efecto de explosión
+                    this.createExplosionEffect(meteor.position);
+                }
             }
         });
     }
