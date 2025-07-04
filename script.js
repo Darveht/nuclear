@@ -860,56 +860,267 @@ class TokyoDisasterSimulator {
             this.audioContext = new webkitAudioContext();
         }
         
+        // Variables para música de fondo
+        this.backgroundMusic = null;
+        this.musicGain = null;
+        
         // Sonidos simulados con oscilladores
         this.createAmbientSound();
     }
     
     createAmbientSound() {
-        // Sonido ambiente de ciudad
+        // Sonido ambiente del desierto más suave
         this.ambientOscillator = this.audioContext.createOscillator();
         this.ambientGain = this.audioContext.createGain();
         
-        this.ambientOscillator.frequency.setValueAtTime(60, this.audioContext.currentTime);
+        this.ambientOscillator.frequency.setValueAtTime(40, this.audioContext.currentTime);
         this.ambientOscillator.type = 'sine';
-        this.ambientGain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+        this.ambientGain.gain.setValueAtTime(0.05, this.audioContext.currentTime);
         
         this.ambientOscillator.connect(this.ambientGain);
         this.ambientGain.connect(this.audioContext.destination);
         this.ambientOscillator.start();
     }
     
+    playDisasterMusic() {
+        // Crear música dramática de fondo para desastres
+        this.musicGain = this.audioContext.createGain();
+        this.musicGain.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        this.musicGain.connect(this.audioContext.destination);
+        
+        // Crear múltiples osciladores para música más compleja
+        const frequencies = [220, 440, 330, 165]; // Notas dramáticas
+        this.musicOscillators = [];
+        
+        frequencies.forEach((freq, index) => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            
+            osc.frequency.setValueAtTime(freq, this.audioContext.currentTime);
+            osc.type = index % 2 === 0 ? 'sawtooth' : 'sine';
+            
+            gain.gain.setValueAtTime(0.1, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.2, this.audioContext.currentTime + 2);
+            
+            osc.connect(gain);
+            gain.connect(this.musicGain);
+            osc.start();
+            
+            this.musicOscillators.push(osc);
+            
+            // Variaciones en las frecuencias para crear tensión
+            setTimeout(() => {
+                if (osc) {
+                    osc.frequency.exponentialRampToValueAtTime(freq * 1.2, this.audioContext.currentTime + 1);
+                    osc.frequency.exponentialRampToValueAtTime(freq * 0.8, this.audioContext.currentTime + 3);
+                }
+            }, index * 500);
+        });
+        
+        // Añadir percusión dramática
+        this.createDramaticDrums();
+    }
+    
+    createDramaticDrums() {
+        const playDrum = () => {
+            const osc = this.audioContext.createOscillator();
+            const gain = this.audioContext.createGain();
+            const filter = this.audioContext.createBiquadFilter();
+            
+            osc.frequency.setValueAtTime(60, this.audioContext.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(20, this.audioContext.currentTime + 0.1);
+            osc.type = 'sawtooth';
+            
+            filter.type = 'lowpass';
+            filter.frequency.setValueAtTime(200, this.audioContext.currentTime);
+            
+            gain.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.2);
+            
+            osc.connect(filter);
+            filter.connect(gain);
+            gain.connect(this.musicGain);
+            
+            osc.start();
+            osc.stop(this.audioContext.currentTime + 0.2);
+        };
+        
+        // Ritmo de tambores cada 0.8 segundos
+        this.drumInterval = setInterval(playDrum, 800);
+    }
+    
+    playNuclearSiren() {
+        // Alarma nuclear más realista y aterradora
+        const siren1 = this.audioContext.createOscillator();
+        const siren2 = this.audioContext.createOscillator();
+        const gainNode1 = this.audioContext.createGain();
+        const gainNode2 = this.audioContext.createGain();
+        const filter = this.audioContext.createBiquadFilter();
+        
+        // Dos tonos que crean el efecto de sirena nuclear
+        siren1.frequency.setValueAtTime(400, this.audioContext.currentTime);
+        siren1.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 1.5);
+        siren1.frequency.exponentialRampToValueAtTime(400, this.audioContext.currentTime + 3);
+        siren1.type = 'sawtooth';
+        
+        siren2.frequency.setValueAtTime(600, this.audioContext.currentTime);
+        siren2.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 1.5);
+        siren2.frequency.exponentialRampToValueAtTime(600, this.audioContext.currentTime + 3);
+        siren2.type = 'square';
+        
+        // Filtro para hacer el sonido más amenazante
+        filter.type = 'bandpass';
+        filter.frequency.setValueAtTime(800, this.audioContext.currentTime);
+        filter.Q.setValueAtTime(10, this.audioContext.currentTime);
+        
+        gainNode1.gain.setValueAtTime(0.4, this.audioContext.currentTime);
+        gainNode1.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 3);
+        
+        gainNode2.gain.setValueAtTime(0.3, this.audioContext.currentTime);
+        gainNode2.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 3);
+        
+        siren1.connect(gainNode1);
+        siren2.connect(gainNode2);
+        gainNode1.connect(filter);
+        gainNode2.connect(filter);
+        filter.connect(this.audioContext.destination);
+        
+        siren1.start();
+        siren2.start();
+        siren1.stop(this.audioContext.currentTime + 3);
+        siren2.stop(this.audioContext.currentTime + 3);
+    }
+    
     playSirenSound() {
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
-        
-        oscillator.frequency.setValueAtTime(800, this.audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(1200, this.audioContext.currentTime + 1);
-        oscillator.frequency.exponentialRampToValueAtTime(800, this.audioContext.currentTime + 2);
-        
-        gainNode.gain.setValueAtTime(0.3, this.audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 2);
-        
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        oscillator.start();
-        oscillator.stop(this.audioContext.currentTime + 2);
+        this.playNuclearSiren();
     }
     
     playExplosionSound() {
-        const oscillator = this.audioContext.createOscillator();
-        const gainNode = this.audioContext.createGain();
+        // Explosión mucho más realista con múltiples capas
+        const now = this.audioContext.currentTime;
         
-        oscillator.frequency.setValueAtTime(150, this.audioContext.currentTime);
-        oscillator.frequency.exponentialRampToValueAtTime(50, this.audioContext.currentTime + 0.5);
-        oscillator.type = 'square';
+        // Capa 1: Explosión inicial (bombo profundo)
+        const explosion1 = this.audioContext.createOscillator();
+        const gain1 = this.audioContext.createGain();
+        const filter1 = this.audioContext.createBiquadFilter();
         
-        gainNode.gain.setValueAtTime(0.5, this.audioContext.currentTime);
-        gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 0.5);
+        explosion1.frequency.setValueAtTime(80, now);
+        explosion1.frequency.exponentialRampToValueAtTime(20, now + 0.3);
+        explosion1.type = 'sawtooth';
         
-        oscillator.connect(gainNode);
-        gainNode.connect(this.audioContext.destination);
-        oscillator.start();
-        oscillator.stop(this.audioContext.currentTime + 0.5);
+        filter1.type = 'lowpass';
+        filter1.frequency.setValueAtTime(150, now);
+        
+        gain1.gain.setValueAtTime(0.8, now);
+        gain1.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+        
+        explosion1.connect(filter1);
+        filter1.connect(gain1);
+        gain1.connect(this.audioContext.destination);
+        
+        // Capa 2: Crujido y debris
+        const crackle = this.audioContext.createOscillator();
+        const gain2 = this.audioContext.createGain();
+        const filter2 = this.audioContext.createBiquadFilter();
+        
+        crackle.frequency.setValueAtTime(3000, now);
+        crackle.frequency.exponentialRampToValueAtTime(100, now + 0.5);
+        crackle.type = 'square';
+        
+        filter2.type = 'highpass';
+        filter2.frequency.setValueAtTime(1000, now);
+        
+        gain2.gain.setValueAtTime(0.4, now);
+        gain2.gain.exponentialRampToValueAtTime(0.01, now + 0.5);
+        
+        crackle.connect(filter2);
+        filter2.connect(gain2);
+        gain2.connect(this.audioContext.destination);
+        
+        // Capa 3: Eco de la explosión
+        const echo = this.audioContext.createOscillator();
+        const gain3 = this.audioContext.createGain();
+        const delay = this.audioContext.createDelay();
+        
+        echo.frequency.setValueAtTime(200, now + 0.1);
+        echo.frequency.exponentialRampToValueAtTime(50, now + 1);
+        echo.type = 'triangle';
+        
+        delay.delayTime.setValueAtTime(0.2, now);
+        
+        gain3.gain.setValueAtTime(0.3, now + 0.1);
+        gain3.gain.exponentialRampToValueAtTime(0.01, now + 1.2);
+        
+        echo.connect(delay);
+        delay.connect(gain3);
+        gain3.connect(this.audioContext.destination);
+        
+        // Iniciar todos los sonidos
+        explosion1.start(now);
+        explosion1.stop(now + 0.8);
+        
+        crackle.start(now + 0.05);
+        crackle.stop(now + 0.5);
+        
+        echo.start(now + 0.1);
+        echo.stop(now + 1.2);
+        
+        // Añadir ruido blanco para hacer más realista
+        this.addExplosionNoise(now);
+    }
+    
+    addExplosionNoise(startTime) {
+        // Crear ruido blanco para la explosión
+        const bufferSize = this.audioContext.sampleRate * 0.5; // 0.5 segundos de ruido
+        const buffer = this.audioContext.createBuffer(1, bufferSize, this.audioContext.sampleRate);
+        const output = buffer.getChannelData(0);
+        
+        // Generar ruido blanco
+        for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+        }
+        
+        const whiteNoise = this.audioContext.createBufferSource();
+        const noiseGain = this.audioContext.createGain();
+        const noiseFilter = this.audioContext.createBiquadFilter();
+        
+        whiteNoise.buffer = buffer;
+        
+        noiseFilter.type = 'bandpass';
+        noiseFilter.frequency.setValueAtTime(500, startTime);
+        noiseFilter.Q.setValueAtTime(2, startTime);
+        
+        noiseGain.gain.setValueAtTime(0.3, startTime);
+        noiseGain.gain.exponentialRampToValueAtTime(0.01, startTime + 0.5);
+        
+        whiteNoise.connect(noiseFilter);
+        noiseFilter.connect(noiseGain);
+        noiseGain.connect(this.audioContext.destination);
+        
+        whiteNoise.start(startTime);
+        whiteNoise.stop(startTime + 0.5);
+    }
+    
+    stopBackgroundMusic() {
+        if (this.musicOscillators) {
+            this.musicOscillators.forEach(osc => {
+                try {
+                    osc.stop();
+                } catch (e) {
+                    // Ignorar errores si ya está parado
+                }
+            });
+            this.musicOscillators = [];
+        }
+        
+        if (this.drumInterval) {
+            clearInterval(this.drumInterval);
+            this.drumInterval = null;
+        }
+        
+        if (this.musicGain) {
+            this.musicGain.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + 1);
+        }
     }
     
     setupUI() {
@@ -987,6 +1198,9 @@ class TokyoDisasterSimulator {
         this.gameState.phase = 'pre_earthquake';
         document.getElementById('timer').style.display = 'none';
         
+        // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
+        this.playDisasterMusic();
+        
         // Crear alerta de teléfono
         this.createPhoneAlert();
         
@@ -1024,8 +1238,8 @@ class TokyoDisasterSimulator {
                 
                 if (phase === 2) {
                     this.sirenInterval = setInterval(() => {
-                        this.playSirenSound();
-                    }, 2000);
+                        this.playNuclearSiren();
+                    }, 3000);
                 }
                 
                 if (phase === 3) {
@@ -1049,6 +1263,9 @@ class TokyoDisasterSimulator {
         this.gameState.phase = 'meteor_rain';
         this.showStatus('¡LLUVIA DE METEORITOS! ¡Esquívalos!');
         
+        // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
+        this.playDisasterMusic();
+        
         this.renderer.setClearColor(0x4B0000);
         this.scene.fog.color.setHex(0xFF6600);
         
@@ -1067,6 +1284,9 @@ class TokyoDisasterSimulator {
     startHailstorm() {
         this.gameState.phase = 'hailstorm';
         this.showStatus('¡GRANIZO MORTAL! ¡Busca refugio!');
+        
+        // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
+        this.playDisasterMusic();
         
         this.renderer.setClearColor(0x2F4F4F);
         this.scene.fog.color.setHex(0x708090);
@@ -1140,6 +1360,9 @@ class TokyoDisasterSimulator {
     completeLevel() {
         this.clearAllIntervals();
         
+        // Parar música de fondo
+        this.stopBackgroundMusic();
+        
         if (this.gameState.currentLevel < this.gameState.maxLevel) {
             this.gameState.currentLevel++;
             // Tiempo ajustado para cada nivel
@@ -1187,11 +1410,18 @@ class TokyoDisasterSimulator {
         if (this.hailInterval) clearInterval(this.hailInterval);
         if (this.locustDamageInterval) clearInterval(this.locustDamageInterval);
         if (this.radiationInterval) clearInterval(this.radiationInterval);
+        if (this.drumInterval) clearInterval(this.drumInterval);
+        
+        // Parar música de fondo
+        this.stopBackgroundMusic();
     }
     
     startNuclearApocalypse() {
         this.gameState.phase = 'nuclear_apocalypse';
         this.showStatus('¡RADIACIÓN NUCLEAR! ¡CORRE AL BUNKER!');
+        
+        // ¡NUEVA MÚSICA DE FONDO DRAMÁTICA!
+        this.playDisasterMusic();
         
         // Cambiar el cielo a rojo nuclear
         this.renderer.setClearColor(0x8B0000);
