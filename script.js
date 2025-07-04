@@ -60,7 +60,12 @@ class TokyoDisasterSimulator {
             ambient: null,
             earthquake: null,
             siren: null,
-            explosion: null
+            explosion: null,
+            disasterMusic: null
+        };
+        
+        this.audioElements = {
+            disasterMusic: null
         };
         
         this.init();
@@ -862,6 +867,95 @@ class TokyoDisasterSimulator {
         
         // Sonidos simulados con oscilladores
         this.createAmbientSound();
+        
+        // Configurar música de desastres
+        this.setupDisasterMusic();
+    }
+    
+    setupDisasterMusic() {
+        // Crear elemento de audio para la música de desastres
+        this.audioElements.disasterMusic = new Audio();
+        this.audioElements.disasterMusic.loop = true;
+        this.audioElements.disasterMusic.volume = 0.3;
+        
+        // URL de la música de desastre
+        // Nota: Dropbox links need to be modified for direct download
+        const musicUrl = "https://www.dropbox.com/scl/fi/hqi0ioaiheumoj1grtcvh/copy_3A6748CB-4617-4A57-A27B-CE0C4BD60723.mov?rlkey=rjlm903eiwp40bhijiwph3v62&st=1i2d8xs0&dl=1";
+        this.audioElements.disasterMusic.src = musicUrl;
+        
+        // Manejar errores de carga
+        this.audioElements.disasterMusic.addEventListener('error', (e) => {
+            console.log('Error loading disaster music:', e);
+            // Fallback: crear música sintética si no se puede cargar el archivo
+            this.createSyntheticDisasterMusic();
+        });
+        
+        this.audioElements.disasterMusic.addEventListener('canplaythrough', () => {
+            console.log('Disaster music loaded successfully');
+        });
+    }
+    
+    createSyntheticDisasterMusic() {
+        // Crear música sintética dramática como fallback
+        this.syntheticMusicOscillator = this.audioContext.createOscillator();
+        this.syntheticMusicGain = this.audioContext.createGain();
+        this.syntheticMusicFilter = this.audioContext.createBiquadFilter();
+        
+        this.syntheticMusicOscillator.frequency.setValueAtTime(220, this.audioContext.currentTime);
+        this.syntheticMusicOscillator.type = 'sawtooth';
+        this.syntheticMusicGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+        this.syntheticMusicFilter.type = 'lowpass';
+        this.syntheticMusicFilter.frequency.setValueAtTime(1000, this.audioContext.currentTime);
+        
+        this.syntheticMusicOscillator.connect(this.syntheticMusicFilter);
+        this.syntheticMusicFilter.connect(this.syntheticMusicGain);
+        this.syntheticMusicGain.connect(this.audioContext.destination);
+    }
+    
+    playDisasterMusic() {
+        try {
+            // Intentar reproducir la música de archivo primero
+            if (this.audioElements.disasterMusic && this.audioElements.disasterMusic.readyState >= 3) {
+                this.audioElements.disasterMusic.currentTime = 0;
+                this.audioElements.disasterMusic.play().catch(e => {
+                    console.log('Error playing disaster music:', e);
+                    this.playSyntheticDisasterMusic();
+                });
+            } else {
+                // Usar música sintética si el archivo no está disponible
+                this.playSyntheticDisasterMusic();
+            }
+        } catch (error) {
+            console.log('Audio error:', error);
+            this.playSyntheticDisasterMusic();
+        }
+    }
+    
+    playSyntheticDisasterMusic() {
+        if (this.syntheticMusicOscillator) {
+            this.syntheticMusicOscillator.start();
+            this.syntheticMusicGain.gain.setValueAtTime(0.15, this.audioContext.currentTime);
+            
+            // Crear melodía dramática
+            const now = this.audioContext.currentTime;
+            const notes = [220, 185, 196, 174, 220, 196, 174, 165];
+            notes.forEach((frequency, index) => {
+                this.syntheticMusicOscillator.frequency.setValueAtTime(frequency, now + index * 0.5);
+            });
+        }
+    }
+    
+    stopDisasterMusic() {
+        // Detener música de archivo
+        if (this.audioElements.disasterMusic) {
+            this.audioElements.disasterMusic.pause();
+            this.audioElements.disasterMusic.currentTime = 0;
+        }
+        
+        // Detener música sintética
+        if (this.syntheticMusicGain) {
+            this.syntheticMusicGain.gain.setValueAtTime(0, this.audioContext.currentTime);
+        }
     }
     
     createAmbientSound() {
@@ -987,6 +1081,9 @@ class TokyoDisasterSimulator {
         this.gameState.phase = 'pre_earthquake';
         document.getElementById('timer').style.display = 'none';
         
+        // ¡REPRODUCIR MÚSICA DE DESASTRE!
+        this.playDisasterMusic();
+        
         // Crear alerta de teléfono
         this.createPhoneAlert();
         
@@ -1049,6 +1146,9 @@ class TokyoDisasterSimulator {
         this.gameState.phase = 'meteor_rain';
         this.showStatus('¡LLUVIA DE METEORITOS! ¡Esquívalos!');
         
+        // ¡REPRODUCIR MÚSICA DE DESASTRE!
+        this.playDisasterMusic();
+        
         this.renderer.setClearColor(0x4B0000);
         this.scene.fog.color.setHex(0xFF6600);
         
@@ -1067,6 +1167,9 @@ class TokyoDisasterSimulator {
     startHailstorm() {
         this.gameState.phase = 'hailstorm';
         this.showStatus('¡GRANIZO MORTAL! ¡Busca refugio!');
+        
+        // ¡REPRODUCIR MÚSICA DE DESASTRE!
+        this.playDisasterMusic();
         
         this.renderer.setClearColor(0x2F4F4F);
         this.scene.fog.color.setHex(0x708090);
@@ -1140,6 +1243,9 @@ class TokyoDisasterSimulator {
     completeLevel() {
         this.clearAllIntervals();
         
+        // Detener música de desastre
+        this.stopDisasterMusic();
+        
         if (this.gameState.currentLevel < this.gameState.maxLevel) {
             this.gameState.currentLevel++;
             // Tiempo ajustado para cada nivel
@@ -1193,6 +1299,9 @@ class TokyoDisasterSimulator {
         this.gameState.phase = 'nuclear_apocalypse';
         this.showStatus('¡RADIACIÓN NUCLEAR! ¡CORRE AL BUNKER!');
         
+        // ¡REPRODUCIR MÚSICA DE DESASTRE!
+        this.playDisasterMusic();
+        
         // Cambiar el cielo a rojo nuclear
         this.renderer.setClearColor(0x8B0000);
         this.scene.fog.color.setHex(0xFF4500);
@@ -1223,17 +1332,11 @@ class TokyoDisasterSimulator {
         
         // Núcleo del meteorito (más grande y brillante)
         const meteorGeometry = new THREE.SphereGeometry(4, 12, 12);
-        const meteorMaterial = new THREE.MeshBasicMaterial({ 
+        const meteorMaterial = new THREE.MeshLambertMaterial({ 
             color: 0xff6600,
-            emissive: 0xff2200 // Error corregido: usar MeshLambertMaterial
+            emissive: 0xff2200
         });
         const meteorCore = new THREE.Mesh(meteorGeometry, meteorMaterial);
-        
-        // Usar MeshLambertMaterial en su lugar
-        const meteorCorrectedMaterial = new THREE.MeshLambertMaterial({ 
-            color: 0xff6600
-        });
-        meteorCore.material = meteorCorrectedMaterial;
         
         // Aura brillante alrededor del meteorito
         const auraGeometry = new THREE.SphereGeometry(6, 12, 12);
